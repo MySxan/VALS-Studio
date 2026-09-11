@@ -1,0 +1,11 @@
+[package]
+name = "vocal-time"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+vocal-domain = { path = "../vocal-domain" }
+
+[lints]
+workspace = true

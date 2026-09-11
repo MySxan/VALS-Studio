@@ -1,0 +1,29 @@
+name: Desktop
+on: [push, pull_request]
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+      - run: rustup component add rustfmt clippy
+      - run: npm ci
+        working-directory: apps/desktop
+      - name: Generate current Rust DTO fixture
+        shell: pwsh
+        run: |
+          cargo run -p vocal-app --example import_session --locked | Out-File -Encoding utf8 apps/desktop/src/test-fixtures/session.json
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - run: npm test
+        working-directory: apps/desktop
+      - run: npm run build
+        working-directory: apps/desktop
+      - run: cargo fetch --manifest-path apps/desktop/src-tauri/Cargo.toml --locked
+      - run: cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml -- --check
+      - run: cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets --features tauri/custom-protocol --offline --locked -- -D warnings
+      - run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --features tauri/custom-protocol --offline --locked
+      - run: cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --features tauri/custom-protocol --offline --locked

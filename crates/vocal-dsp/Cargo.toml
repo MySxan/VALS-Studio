@@ -1,0 +1,10 @@
+[package]
+name = "vocal-dsp"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+[dependencies]
+vocal-analysis-api = { path = "../vocal-analysis-api" }
+vocal-domain = { path = "../vocal-domain" }
+[lints]
+workspace = true

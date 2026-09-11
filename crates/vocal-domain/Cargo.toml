@@ -1,0 +1,11 @@
+[package]
+name = "vocal-domain"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+uuid = { version = "1.26", features = ["v4"] }
+
+[lints]
+workspace = true

@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main",
+  "description": "Local desktop window and WAV file selection",
+  "windows": ["main"],
+  "permissions": ["core:default", "dialog:allow-open"]
+}

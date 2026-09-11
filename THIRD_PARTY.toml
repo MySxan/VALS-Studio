@@ -1,0 +1,566 @@
+# Lockfile dependency inventory, generated from cargo metadata on 2026-09-11.
+# Includes transitive and target-specific crates; exact versions are locked in Cargo.lock.
+# Desktop adapter/frontend inventory: docs/desktop-dependencies.json (separate desktop lockfiles).
+
+[policy]
+redistribution = "Not bundled in a release yet; retain upstream license and copyright notices when distributed"
+model_weights = "None"
+commercial_use = "Release review pending; use the recorded upstream license terms"
+
+[[dependencies]]
+name = "arrayvec"
+version = "0.7.8"
+source = "https://crates.io/crates/arrayvec/0.7.8"
+repository = "https://github.com/bluss/arrayvec"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "bitflags"
+version = "1.3.2"
+source = "https://crates.io/crates/bitflags/1.3.2"
+repository = "https://github.com/bitflags/bitflags"
+license = "MIT/Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "bitflags"
+version = "2.13.2"
+source = "https://crates.io/crates/bitflags/2.13.2"
+repository = "https://github.com/bitflags/bitflags"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "block-buffer"
+version = "0.12.1"
+source = "https://crates.io/crates/block-buffer/0.12.1"
+repository = "https://github.com/RustCrypto/utils"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "bumpalo"
+version = "3.20.3"
+source = "https://crates.io/crates/bumpalo/3.20.3"
+repository = "https://github.com/fitzgen/bumpalo"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "bytemuck"
+version = "1.25.2"
+source = "https://crates.io/crates/bytemuck/1.25.2"
+repository = "https://github.com/Lokathor/bytemuck"
+license = "Zlib OR Apache-2.0 OR MIT"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "cfg-if"
+version = "1.0.4"
+source = "https://crates.io/crates/cfg-if/1.0.4"
+repository = "https://github.com/rust-lang/cfg-if"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "const-oid"
+version = "0.10.2"
+source = "https://crates.io/crates/const-oid/0.10.2"
+repository = "https://github.com/RustCrypto/formats"
+license = "Apache-2.0 OR MIT"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "core_detect"
+version = "1.0.0"
+source = "https://crates.io/crates/core_detect/1.0.0"
+repository = "https://github.com/thomcc/core_detect"
+license = "MIT/Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "cpufeatures"
+version = "0.3.1"
+source = "https://crates.io/crates/cpufeatures/0.3.1"
+repository = "https://github.com/RustCrypto/utils"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "crc32fast"
+version = "1.5.1"
+source = "https://crates.io/crates/crc32fast/1.5.1"
+repository = "https://github.com/srijs/rust-crc32fast"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "crypto-common"
+version = "0.2.2"
+source = "https://crates.io/crates/crypto-common/0.2.2"
+repository = "https://github.com/RustCrypto/traits"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "digest"
+version = "0.11.3"
+source = "https://crates.io/crates/digest/0.11.3"
+repository = "https://github.com/RustCrypto/traits"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "encoding_rs"
+version = "0.8.41"
+source = "https://crates.io/crates/encoding_rs/0.8.41"
+repository = "https://github.com/hsivonen/encoding_rs"
+license = "(Apache-2.0 OR MIT) AND BSD-3-Clause"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "equivalent"
+version = "1.0.2"
+source = "https://crates.io/crates/equivalent/1.0.2"
+repository = "https://github.com/indexmap-rs/equivalent"
+license = "Apache-2.0 OR MIT"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "errno"
+version = "0.3.14"
+source = "https://crates.io/crates/errno/0.3.14"
+repository = "https://github.com/lambda-fairy/rust-errno"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "extended"
+version = "0.1.0"
+source = "https://crates.io/crates/extended/0.1.0"
+repository = "https://github.com/depp/extended-rs"
+license = "MIT"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "fastrand"
+version = "2.5.0"
+source = "https://crates.io/crates/fastrand/2.5.0"
+repository = "https://github.com/smol-rs/fastrand"
+license = "Apache-2.0 OR MIT"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "futures-core"
+version = "0.3.34"
+source = "https://crates.io/crates/futures-core/0.3.34"
+repository = "https://github.com/rust-lang/futures-rs"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "futures-task"
+version = "0.3.34"
+source = "https://crates.io/crates/futures-task/0.3.34"
+repository = "https://github.com/rust-lang/futures-rs"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "futures-util"
+version = "0.3.34"
+source = "https://crates.io/crates/futures-util/0.3.34"
+repository = "https://github.com/rust-lang/futures-rs"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "getrandom"
+version = "0.4.3"
+source = "https://crates.io/crates/getrandom/0.4.3"
+repository = "https://github.com/rust-random/getrandom"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "hashbrown"
+version = "0.17.1"
+source = "https://crates.io/crates/hashbrown/0.17.1"
+repository = "https://github.com/rust-lang/hashbrown"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "hybrid-array"
+version = "0.4.15"
+source = "https://crates.io/crates/hybrid-array/0.4.15"
+repository = "https://github.com/RustCrypto/hybrid-array"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "indexmap"
+version = "2.14.2"
+source = "https://crates.io/crates/indexmap/2.14.2"
+repository = "https://github.com/indexmap-rs/indexmap"
+license = "Apache-2.0 OR MIT"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "itoa"
+version = "1.0.18"
+source = "https://crates.io/crates/itoa/1.0.18"
+repository = "https://github.com/dtolnay/itoa"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "js-sys"
+version = "0.3.105"
+source = "https://crates.io/crates/js-sys/0.3.105"
+repository = "https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/js-sys"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "lazy_static"
+version = "1.5.0"
+source = "https://crates.io/crates/lazy_static/1.5.0"
+repository = "https://github.com/rust-lang-nursery/lazy-static.rs"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "libc"
+version = "0.2.189"
+source = "https://crates.io/crates/libc/0.2.189"
+repository = "https://github.com/rust-lang/libc"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "linux-raw-sys"
+version = "0.12.1"
+source = "https://crates.io/crates/linux-raw-sys/0.12.1"
+repository = "https://github.com/sunfishcode/linux-raw-sys"
+license = "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "log"
+version = "0.4.34"
+source = "https://crates.io/crates/log/0.4.34"
+repository = "https://github.com/rust-lang/log"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "memchr"
+version = "2.8.3"
+source = "https://crates.io/crates/memchr/2.8.3"
+repository = "https://github.com/BurntSushi/memchr"
+license = "Unlicense OR MIT"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "multiversion"
+version = "0.9.0"
+source = "https://crates.io/crates/multiversion/0.9.0"
+repository = "https://github.com/calebzulawski/multiversion"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "multiversion_no_op"
+version = "1.0.0"
+source = "https://crates.io/crates/multiversion_no_op/1.0.0"
+repository = "https://github.com/hsivonen/multiversion_no_op"
+license = "Apache-2.0 OR MIT"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "multiversion-macros"
+version = "0.9.0"
+source = "https://crates.io/crates/multiversion-macros/0.9.0"
+repository = "https://github.com/calebzulawski/multiversion"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "once_cell"
+version = "1.21.4"
+source = "https://crates.io/crates/once_cell/1.21.4"
+repository = "https://github.com/matklad/once_cell"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "pin-project-lite"
+version = "0.2.17"
+source = "https://crates.io/crates/pin-project-lite/0.2.17"
+repository = "https://github.com/taiki-e/pin-project-lite"
+license = "Apache-2.0 OR MIT"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "proc-macro2"
+version = "1.0.107"
+source = "https://crates.io/crates/proc-macro2/1.0.107"
+repository = "https://github.com/dtolnay/proc-macro2"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "quote"
+version = "1.0.47"
+source = "https://crates.io/crates/quote/1.0.47"
+repository = "https://github.com/dtolnay/quote"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "r-efi"
+version = "6.0.0"
+source = "https://crates.io/crates/r-efi/6.0.0"
+repository = "https://github.com/r-efi/r-efi"
+license = "MIT OR Apache-2.0 OR LGPL-2.1-or-later"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "rustix"
+version = "1.1.4"
+source = "https://crates.io/crates/rustix/1.1.4"
+repository = "https://github.com/bytecodealliance/rustix"
+license = "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "rustversion"
+version = "1.0.23"
+source = "https://crates.io/crates/rustversion/1.0.23"
+repository = "https://github.com/dtolnay/rustversion"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "scopeguard"
+version = "1.2.0"
+source = "https://crates.io/crates/scopeguard/1.2.0"
+repository = "https://github.com/bluss/scopeguard"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "serde"
+version = "1.0.229"
+source = "https://crates.io/crates/serde/1.0.229"
+repository = "https://github.com/serde-rs/serde"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "serde_core"
+version = "1.0.229"
+source = "https://crates.io/crates/serde_core/1.0.229"
+repository = "https://github.com/serde-rs/serde"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "serde_derive"
+version = "1.0.229"
+source = "https://crates.io/crates/serde_derive/1.0.229"
+repository = "https://github.com/serde-rs/serde"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "serde_json"
+version = "1.0.151"
+source = "https://crates.io/crates/serde_json/1.0.151"
+repository = "https://github.com/serde-rs/json"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "sha2"
+version = "0.11.0"
+source = "https://crates.io/crates/sha2/0.11.0"
+repository = "https://github.com/RustCrypto/hashes"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "simdutf8"
+version = "0.1.5"
+source = "https://crates.io/crates/simdutf8/0.1.5"
+repository = "https://github.com/rusticstuff/simdutf8"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "slab"
+version = "0.4.12"
+source = "https://crates.io/crates/slab/0.4.12"
+repository = "https://github.com/tokio-rs/slab"
+license = "MIT"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "symphonia"
+version = "0.5.5"
+source = "https://crates.io/crates/symphonia/0.5.5"
+repository = "https://github.com/pdeljanov/Symphonia"
+license = "MPL-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "symphonia-codec-pcm"
+version = "0.5.5"
+source = "https://crates.io/crates/symphonia-codec-pcm/0.5.5"
+repository = "https://github.com/pdeljanov/Symphonia"
+license = "MPL-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "symphonia-core"
+version = "0.5.5"
+source = "https://crates.io/crates/symphonia-core/0.5.5"
+repository = "https://github.com/pdeljanov/Symphonia"
+license = "MPL-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "symphonia-format-riff"
+version = "0.5.5"
+source = "https://crates.io/crates/symphonia-format-riff/0.5.5"
+repository = "https://github.com/pdeljanov/Symphonia"
+license = "MPL-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "symphonia-metadata"
+version = "0.5.5"
+source = "https://crates.io/crates/symphonia-metadata/0.5.5"
+repository = "https://github.com/pdeljanov/Symphonia"
+license = "MPL-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "syn"
+version = "3.0.5"
+source = "https://crates.io/crates/syn/3.0.5"
+repository = "https://github.com/dtolnay/syn"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "tempfile"
+version = "3.27.0"
+source = "https://crates.io/crates/tempfile/3.27.0"
+repository = "https://github.com/Stebalien/tempfile"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "typed-path"
+version = "0.12.3"
+source = "https://crates.io/crates/typed-path/0.12.3"
+repository = "https://github.com/chipsenkbeil/typed-path"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "typenum"
+version = "1.20.1"
+source = "https://crates.io/crates/typenum/1.20.1"
+repository = "https://github.com/paholg/typenum"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "unicode-ident"
+version = "1.0.24"
+source = "https://crates.io/crates/unicode-ident/1.0.24"
+repository = "https://github.com/dtolnay/unicode-ident"
+license = "(MIT OR Apache-2.0) AND Unicode-3.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "uuid"
+version = "1.26.1"
+source = "https://crates.io/crates/uuid/1.26.1"
+repository = "https://github.com/uuid-rs/uuid"
+license = "Apache-2.0 OR MIT"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "wasm-bindgen"
+version = "0.2.128"
+source = "https://crates.io/crates/wasm-bindgen/0.2.128"
+repository = "https://github.com/wasm-bindgen/wasm-bindgen"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "wasm-bindgen-macro"
+version = "0.2.128"
+source = "https://crates.io/crates/wasm-bindgen-macro/0.2.128"
+repository = "https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/macro"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "wasm-bindgen-macro-support"
+version = "0.2.128"
+source = "https://crates.io/crates/wasm-bindgen-macro-support/0.2.128"
+repository = "https://github.com/wasm-bindgen/wasm-bindgen/tree/main/crates/macro-support"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "wasm-bindgen-shared"
+version = "0.2.128"
+source = "https://crates.io/crates/wasm-bindgen-shared/0.2.128"
+repository = "https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/shared"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "windows-link"
+version = "0.2.1"
+source = "https://crates.io/crates/windows-link/0.2.1"
+repository = "https://github.com/microsoft/windows-rs"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "windows-sys"
+version = "0.61.2"
+source = "https://crates.io/crates/windows-sys/0.61.2"
+repository = "https://github.com/microsoft/windows-rs"
+license = "MIT OR Apache-2.0"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "zip"
+version = "8.6.0"
+source = "https://crates.io/crates/zip/8.6.0"
+repository = "https://github.com/zip-rs/zip2"
+license = "MIT"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[[dependencies]]
+name = "zmij"
+version = "1.0.23"
+source = "https://crates.io/crates/zmij/1.0.23"
+repository = "https://github.com/dtolnay/zmij"
+license = "MIT"
+attribution = "Upstream package copyright and license notices; policy applies to this entry"
+
+[development_toolchain]
+name = "Rust and bundled LLVM/GNU development tools"
+source = "https://www.rust-lang.org/"
+license = "See upstream component licenses in the local rustup toolchains"
+redistribution = "Development only; not bundled with the application"

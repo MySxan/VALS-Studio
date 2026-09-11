@@ -1,0 +1,19 @@
+[package]
+name = "vocal-app"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+vocal-domain = { path = "../vocal-domain" }
+vocal-analysis-api = { path = "../vocal-analysis-api" }
+vocal-analysis-runtime = { path = "../vocal-analysis-runtime" }
+vocal-audio = { path = "../vocal-audio" }
+vocal-dsp = { path = "../vocal-dsp" }
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1"
+
+[lints]
+workspace = true

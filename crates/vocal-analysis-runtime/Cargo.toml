@@ -1,0 +1,14 @@
+[package]
+name = "vocal-analysis-runtime"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+[dependencies]
+vocal-analysis-api = { path = "../vocal-analysis-api" }
+vocal-domain = { path = "../vocal-domain" }
+[dev-dependencies]
+vocal-audio = { path = "../vocal-audio" }
+vocal-dsp = { path = "../vocal-dsp" }
+tempfile = "3.27"
+[lints]
+workspace = true

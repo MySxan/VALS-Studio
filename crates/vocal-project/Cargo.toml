@@ -1,0 +1,18 @@
+[package]
+name = "vocal-project"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+vocal-domain = { path = "../vocal-domain" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tempfile = "3.27"
+zip = { version = "8.6", default-features = false }
+
+[dev-dependencies]
+vocal-audio = { path = "../vocal-audio" }
+
+[lints]
+workspace = true

@@ -1,0 +1,11 @@
+[workspace]
+members = ["crates/vocal-domain", "crates/vocal-time", "crates/vocal-project", "crates/vocal-audio", "crates/vocal-analysis-api", "crates/vocal-analysis-runtime", "crates/vocal-dsp", "crates/vocal-app"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
