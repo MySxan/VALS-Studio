@@ -44,6 +44,6 @@ Tauri/React 支持 New/Open/Save/Save As/Close、WAV 导入、轨道选择与 Ca
 
 入口统一执行核心 fmt/clippy/tests/五个示例、Rust DTO fixture 比较、前端 tests/build，以及 Tauri fmt/clippy/tests/build。MSVC 与 SDK 通过安装信息和完整版本目录自动发现；失败立即停止并恢复调用环境。工具准备、fixture 显式刷新和 CI 范围见 [验证契约](docs/architecture/phase-0-validation-slice.md)。
 
-本机完整链路通过：70 项核心测试、20 项前端测试、2 项 Tauri IPC 测试、4 项 fixture 契约测试、工具脚本测试和原生构建。正常验证不修改已审查 fixture。Windows/macOS/Linux CI 已改为调用统一入口；远程 CI、其他系统和真实原生对话框/窗口关闭仍待验收。
+本机完整链路通过：70 项核心测试、20 项前端测试、2 项 Tauri IPC 测试、4 项 fixture 契约测试、工具脚本测试和原生构建。正常验证不修改已审查 fixture。GitHub Actions 已通过 Ubuntu/macOS Core 与 Windows All/System；真实原生对话框和窗口关闭仍待交互式 Windows 验收。
 
 可执行文件：`apps/desktop/src-tauri/target/debug/vals-desktop.exe`。源文件状态与下一阶段目标见 [CURRENT](docs/CURRENT.md) 和 [NEXT](docs/NEXT.md)。
