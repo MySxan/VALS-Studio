@@ -1,7 +1,61 @@
 use super::*;
 use serde_json::{json, Value};
-use std::time::{Duration, Instant};
+use std::{
+    sync::{Arc, Mutex},
+    time::{Duration, Instant},
+};
 use tauri::test::{mock_builder, mock_context, noop_assets, MockRuntime};
+use vocal_app::{PlaybackEngine, PlaybackEngineStatus, PlaybackPhase};
+use vocal_domain::signal::Pcm;
+
+#[derive(Clone)]
+struct TestPlayback(Arc<Mutex<PlaybackEngineStatus>>);
+
+impl Default for TestPlayback {
+    fn default() -> Self {
+        Self(Arc::new(Mutex::new(PlaybackEngineStatus {
+            phase: PlaybackPhase::Stopped,
+            position_frames: 0,
+            total_frames: 0,
+        })))
+    }
+}
+
+impl PlaybackEngine for TestPlayback {
+    fn load(&mut self, pcm: Pcm) -> Result<(), String> {
+        *self.0.lock().unwrap() = PlaybackEngineStatus {
+            phase: PlaybackPhase::Stopped,
+            position_frames: 0,
+            total_frames: pcm.metadata().frames().get() as u64,
+        };
+        Ok(())
+    }
+    fn play(&mut self) -> Result<(), String> {
+        self.0.lock().unwrap().phase = PlaybackPhase::Playing;
+        Ok(())
+    }
+    fn pause(&mut self) -> Result<(), String> {
+        self.0.lock().unwrap().phase = PlaybackPhase::Paused;
+        Ok(())
+    }
+    fn seek(&mut self, frame: u64) -> Result<(), String> {
+        let mut state = self.0.lock().unwrap();
+        state.position_frames = frame;
+        if state.phase != PlaybackPhase::Playing && frame > 0 {
+            state.phase = PlaybackPhase::Paused;
+        }
+        Ok(())
+    }
+    fn stop(&mut self) -> Result<(), String> {
+        let mut state = self.0.lock().unwrap();
+        state.phase = PlaybackPhase::Stopped;
+        state.position_frames = 0;
+        Ok(())
+    }
+    fn status(&self) -> Result<PlaybackEngineStatus, String> {
+        Ok(*self.0.lock().unwrap())
+    }
+}
 fn invoke(
     w: &tauri::WebviewWindow<MockRuntime>,
     command: &str,
@@ -36,7 +90,7 @@ fn wait(w: &tauri::WebviewWindow<MockRuntime>, id: Value) {
 #[test]
 fn desktop_project_roundtrip_uses_real_store_analysis_and_ipc() {
     let app = mock_builder()
-        .manage(AppService::default())
+        .manage(AppService::with_playback(TestPlayback::default()))
         .invoke_handler(tauri::generate_handler![
             current_project,
             new_project,
@@ -48,7 +102,13 @@ fn desktop_project_roundtrip_uses_real_store_analysis_and_ipc() {
             relink_track,
             job_status,
             cancel_job,
-            waveform_slice
+            waveform_slice,
+            load_playback,
+            playback_play,
+            playback_pause,
+            playback_seek,
+            playback_stop,
+            playback_status
         ])
         .build(mock_context(noop_assets()))
         .unwrap();
@@ -76,6 +136,28 @@ fn desktop_project_roundtrip_uses_real_store_analysis_and_ipc() {
     );
     let state = invoke(&w, "current_project", json!({})).unwrap();
     let track = &state["project"]["tracks"][0];
+    let playback = json!({"projectId":id,"generation":generation,"trackId":track["id"]});
+    let mut load = playback.clone();
+    load["position"] = json!(0.005);
+    assert_eq!(
+        invoke(&w, "load_playback", load).unwrap()["phase"],
+        "paused"
+    );
+    assert_eq!(
+        invoke(&w, "playback_play", playback.clone()).unwrap()["phase"],
+        "playing"
+    );
+    let mut seek = playback.clone();
+    seek["position"] = json!(0.01);
+    assert_eq!(invoke(&w, "playback_seek", seek).unwrap()["position"], 0.01);
+    assert_eq!(
+        invoke(&w, "playback_pause", playback.clone()).unwrap()["phase"],
+        "paused"
+    );
+    assert_eq!(
+        invoke(&w, "playback_stop", playback).unwrap()["position"],
+        0.0
+    );
     let temp = tempfile::tempdir().unwrap();
     let saved_path = temp.path().join("ipc.vocalproj");
     let saved = invoke(

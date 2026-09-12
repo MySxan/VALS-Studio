@@ -3,6 +3,7 @@ import { open, save, confirm } from "@tauri-apps/plugin-dialog";
 import {
   workspaceSchema,
   jobSchema,
+  playbackSchema,
   validateWaveform,
   type Backend,
 } from "./model";
@@ -61,5 +62,23 @@ export const backend: Backend = {
       ref,
       track,
       view,
+    ),
+  loadPlayback: async (ref, trackId, position) =>
+    playbackSchema.parse(
+      await invoke("load_playback", { ...ref, trackId, position }),
+    ),
+  play: async (ref, trackId) =>
+    playbackSchema.parse(await invoke("playback_play", { ...ref, trackId })),
+  pause: async (ref, trackId) =>
+    playbackSchema.parse(await invoke("playback_pause", { ...ref, trackId })),
+  seek: async (ref, trackId, position) =>
+    playbackSchema.parse(
+      await invoke("playback_seek", { ...ref, trackId, position }),
+    ),
+  stop: async (ref, trackId) =>
+    playbackSchema.parse(await invoke("playback_stop", { ...ref, trackId })),
+  playbackStatus: async (ref, trackId) =>
+    playbackSchema.parse(
+      await invoke("playback_status", { ...ref, trackId }),
     ),
 };

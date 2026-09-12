@@ -8,6 +8,7 @@ import {
   type Workspace,
   type Job,
   type Waveform,
+  type Playback,
 } from "./model";
 const sample = workspaceSchema.parse(fixture.workspace),
   sampleProject = sample.project!,
@@ -53,6 +54,14 @@ function setup(
   let state = copy(initial),
     disk: Workspace | null = null,
     pending: "import" | "analyze" | "relink" = "import";
+  let playback: Playback = {
+    projectId: sampleProject.id,
+    generation: initial.generation,
+    trackId: sampleTrack.id,
+    phase: "stopped",
+    position: 0,
+    duration: sampleTrack.duration,
+  };
   let outcome: "succeeded" | "failed" | "cancelled" = "succeeded";
   let failureState: "offline" | "changed" | "error" = "offline";
   const api: Backend = {
@@ -147,6 +156,34 @@ function setup(
       outcome = "cancelled";
     }),
     waveform: vi.fn(async (ref) => ({ ...fixture.waveform, ...ref })),
+    loadPlayback: vi.fn(async (ref, trackId, position) => {
+      playback = {
+        ...playback,
+        ...ref,
+        trackId,
+        position,
+        phase: position === 0 ? "stopped" : "paused",
+      };
+      return copy(playback);
+    }),
+    play: vi.fn(async () => {
+      playback.phase = "playing";
+      return copy(playback);
+    }),
+    pause: vi.fn(async () => {
+      playback.phase = playback.position === 0 ? "stopped" : "paused";
+      return copy(playback);
+    }),
+    seek: vi.fn(async (_, __, position) => {
+      playback.position = position;
+      return copy(playback);
+    }),
+    stop: vi.fn(async () => {
+      playback.phase = "stopped";
+      playback.position = 0;
+      return copy(playback);
+    }),
+    playbackStatus: vi.fn(async () => copy(playback)),
   };
   const c = createController(api);
   controllers.push(c);
@@ -385,6 +422,35 @@ it("relink restores an offline track and saves its new location", async () => {
   expect(c.store.getState().waveform).not.toBeNull();
   await c.saveProject();
   expect(c.store.getState().workspace.project!.dirty).toBe(false);
+});
+it("playback loads from the viewport, polls identity, seeks, pauses and stops", async () => {
+  vi.useFakeTimers();
+  const { c, api } = setup(sample);
+  await c.initialize();
+  await settle();
+  c.view(0.005, 0.015);
+  await settle();
+  await c.togglePlayback();
+  await settle();
+  expect(api.loadPlayback).toHaveBeenCalledWith(
+    { projectId: sampleProject.id, generation: sample.generation },
+    sampleTrack.id,
+    0.005,
+  );
+  expect(c.store.getState().playback?.phase).toBe("playing");
+  expect(api.playbackStatus).toHaveBeenCalled();
+  await c.togglePlayback();
+  expect(c.store.getState().playback?.phase).toBe("paused");
+  await c.seekPlayback(0.01);
+  expect(c.store.getState().playback?.position).toBe(0.01);
+  await c.stopPlayback();
+  expect(c.store.getState().playback).toMatchObject({
+    phase: "stopped",
+    position: 0,
+  });
+  c.dispose();
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(api.playbackStatus).toHaveBeenCalledTimes(1);
 });
 it.each(["failed", "cancelled"] as const)(
   "%s relink preserves the original track and evidence",

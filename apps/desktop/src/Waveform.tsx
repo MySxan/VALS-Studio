@@ -6,11 +6,13 @@ export function Waveform({
   view,
   data,
   resize,
+  playhead,
 }: {
   track: Track;
   view: Viewport;
   data: WaveformData | null;
   resize: (width: number) => void;
+  playhead: number | null;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -81,7 +83,16 @@ export function Waveform({
       }
       ctx.restore();
     }
-  }, [session, view, data]);
+    if (playhead !== null && playhead >= view.start && playhead <= view.end) {
+      const x = ((playhead - view.start) / (view.end - view.start)) * width;
+      ctx.strokeStyle = "#ffd078";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+    }
+  }, [session, view, data, playhead]);
   return (
     <canvas
       ref={canvas}

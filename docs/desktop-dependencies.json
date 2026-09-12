@@ -30,6 +30,20 @@
       "source": "https://crates.io/crates/alloc-stdlib/0.2.4"
     },
     {
+      "name": "alsa",
+      "version": "0.11.0",
+      "license": "Apache-2.0/MIT",
+      "repository": "https://github.com/diwic/alsa-rs",
+      "source": "https://crates.io/crates/alsa/0.11.0"
+    },
+    {
+      "name": "alsa-sys",
+      "version": "0.4.0",
+      "license": "MIT",
+      "repository": "https://github.com/diwic/alsa-sys",
+      "source": "https://crates.io/crates/alsa-sys/0.4.0"
+    },
+    {
       "name": "android_system_properties",
       "version": "0.1.6",
       "license": "MIT OR Apache-2.0",
@@ -338,6 +352,20 @@
       "source": "https://crates.io/crates/core-graphics-types/0.2.0"
     },
     {
+      "name": "coreaudio-rs",
+      "version": "0.14.2",
+      "license": "MIT/Apache-2.0",
+      "repository": "https://github.com/RustAudio/coreaudio-rs.git",
+      "source": "https://crates.io/crates/coreaudio-rs/0.14.2"
+    },
+    {
+      "name": "cpal",
+      "version": "0.18.2",
+      "license": "Apache-2.0",
+      "repository": "https://github.com/RustAudio/cpal",
+      "source": "https://crates.io/crates/cpal/0.18.2"
+    },
+    {
       "name": "cpufeatures",
       "version": "0.2.17",
       "license": "MIT OR Apache-2.0",
@@ -434,6 +462,13 @@
       "license": "MIT",
       "repository": "https://github.com/TedDriggs/darling",
       "source": "https://crates.io/crates/darling_macro/0.24.1"
+    },
+    {
+      "name": "dasp_sample",
+      "version": "0.11.0",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/rustaudio/sample.git",
+      "source": "https://crates.io/crates/dasp_sample/0.11.0"
     },
     {
       "name": "dbus",
@@ -1199,6 +1234,20 @@
       "source": "https://crates.io/crates/jni/0.21.1"
     },
     {
+      "name": "jni",
+      "version": "0.22.4",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/jni-rs/jni-rs",
+      "source": "https://crates.io/crates/jni/0.22.4"
+    },
+    {
+      "name": "jni-macros",
+      "version": "0.22.4",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/jni-rs/jni-rs",
+      "source": "https://crates.io/crates/jni-macros/0.22.4"
+    },
+    {
       "name": "jni-sys",
       "version": "0.3.1",
       "license": "MIT OR Apache-2.0",
@@ -1325,6 +1374,13 @@
       "source": "https://crates.io/crates/log/0.4.34"
     },
     {
+      "name": "mach2",
+      "version": "0.6.0",
+      "license": "BSD-2-Clause OR MIT OR Apache-2.0",
+      "repository": "https://github.com/JohnTitor/mach2",
+      "source": "https://crates.io/crates/mach2/0.6.0"
+    },
+    {
       "name": "markup5ever",
       "version": "0.38.0",
       "license": "MIT OR Apache-2.0",
@@ -1409,6 +1465,13 @@
       "source": "https://crates.io/crates/ndk/0.9.0"
     },
     {
+      "name": "ndk-context",
+      "version": "0.1.1",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/rust-windowing/android-ndk-rs",
+      "source": "https://crates.io/crates/ndk-context/0.1.1"
+    },
+    {
       "name": "ndk-sys",
       "version": "0.6.0+11769913",
       "license": "MIT OR Apache-2.0",
@@ -1444,6 +1507,13 @@
       "source": "https://crates.io/crates/num-conv/0.2.2"
     },
     {
+      "name": "num-derive",
+      "version": "0.4.2",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/rust-num/num-derive",
+      "source": "https://crates.io/crates/num-derive/0.4.2"
+    },
+    {
       "name": "num-traits",
       "version": "0.2.19",
       "license": "MIT OR Apache-2.0",
@@ -1465,11 +1535,39 @@
       "source": "https://crates.io/crates/objc2-app-kit/0.3.2"
     },
     {
+      "name": "objc2-audio-toolbox",
+      "version": "0.3.2",
+      "license": "Zlib OR Apache-2.0 OR MIT",
+      "repository": "https://github.com/madsmtm/objc2",
+      "source": "https://crates.io/crates/objc2-audio-toolbox/0.3.2"
+    },
+    {
+      "name": "objc2-avf-audio",
+      "version": "0.3.2",
+      "license": "Zlib OR Apache-2.0 OR MIT",
+      "repository": "https://github.com/madsmtm/objc2",
+      "source": "https://crates.io/crates/objc2-avf-audio/0.3.2"
+    },
+    {
       "name": "objc2-cloud-kit",
       "version": "0.3.2",
       "license": "Zlib OR Apache-2.0 OR MIT",
       "repository": "https://github.com/madsmtm/objc2",
       "source": "https://crates.io/crates/objc2-cloud-kit/0.3.2"
+    },
+    {
+      "name": "objc2-core-audio",
+      "version": "0.3.2",
+      "license": "Zlib OR Apache-2.0 OR MIT",
+      "repository": "https://github.com/madsmtm/objc2",
+      "source": "https://crates.io/crates/objc2-core-audio/0.3.2"
+    },
+    {
+      "name": "objc2-core-audio-types",
+      "version": "0.3.2",
+      "license": "Zlib OR Apache-2.0 OR MIT",
+      "repository": "https://github.com/madsmtm/objc2",
+      "source": "https://crates.io/crates/objc2-core-audio-types/0.3.2"
     },
     {
       "name": "objc2-core-data",
@@ -2065,6 +2163,13 @@
       "license": "MIT OR Apache-2.0",
       "repository": "https://github.com/comex/rust-shlex",
       "source": "https://crates.io/crates/shlex/2.0.1"
+    },
+    {
+      "name": "simd_cesu8",
+      "version": "1.2.0",
+      "license": "Apache-2.0 OR MIT",
+      "repository": "https://github.com/seancroach/simd_cesu8",
+      "source": "https://crates.io/crates/simd_cesu8/1.2.0"
     },
     {
       "name": "simd-adler32",
@@ -2858,6 +2963,13 @@
       "source": "https://crates.io/crates/windows/0.61.3"
     },
     {
+      "name": "windows",
+      "version": "0.62.2",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/microsoft/windows-rs",
+      "source": "https://crates.io/crates/windows/0.62.2"
+    },
+    {
       "name": "windows_aarch64_gnullvm",
       "version": "0.42.2",
       "license": "MIT OR Apache-2.0",
@@ -3026,6 +3138,13 @@
       "source": "https://crates.io/crates/windows-collections/0.2.0"
     },
     {
+      "name": "windows-collections",
+      "version": "0.3.2",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/microsoft/windows-rs",
+      "source": "https://crates.io/crates/windows-collections/0.3.2"
+    },
+    {
       "name": "windows-core",
       "version": "0.61.2",
       "license": "MIT OR Apache-2.0",
@@ -3045,6 +3164,13 @@
       "license": "MIT OR Apache-2.0",
       "repository": "https://github.com/microsoft/windows-rs",
       "source": "https://crates.io/crates/windows-future/0.2.1"
+    },
+    {
+      "name": "windows-future",
+      "version": "0.3.2",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/microsoft/windows-rs",
+      "source": "https://crates.io/crates/windows-future/0.3.2"
     },
     {
       "name": "windows-implement",
@@ -3080,6 +3206,13 @@
       "license": "MIT OR Apache-2.0",
       "repository": "https://github.com/microsoft/windows-rs",
       "source": "https://crates.io/crates/windows-numerics/0.2.0"
+    },
+    {
+      "name": "windows-numerics",
+      "version": "0.3.1",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/microsoft/windows-rs",
+      "source": "https://crates.io/crates/windows-numerics/0.3.1"
     },
     {
       "name": "windows-result",
@@ -3164,6 +3297,13 @@
       "license": "MIT OR Apache-2.0",
       "repository": "https://github.com/microsoft/windows-rs",
       "source": "https://crates.io/crates/windows-threading/0.1.0"
+    },
+    {
+      "name": "windows-threading",
+      "version": "0.2.1",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/microsoft/windows-rs",
+      "source": "https://crates.io/crates/windows-threading/0.2.1"
     },
     {
       "name": "windows-version",

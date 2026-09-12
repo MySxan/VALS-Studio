@@ -1,5 +1,84 @@
 use super::*;
 use std::time::{Duration, Instant};
+use vocal_domain::signal::Pcm;
+
+#[derive(Clone, Default)]
+struct TestPlayback(Arc<Mutex<TestPlaybackState>>);
+
+struct TestPlaybackState {
+    phase: PlaybackPhase,
+    position: u64,
+    total: u64,
+    stops: usize,
+}
+
+impl Default for TestPlaybackState {
+    fn default() -> Self {
+        Self {
+            phase: PlaybackPhase::Stopped,
+            position: 0,
+            total: 0,
+            stops: 0,
+        }
+    }
+}
+
+impl PlaybackEngine for TestPlayback {
+    fn load(&mut self, pcm: Pcm) -> Result<(), String> {
+        let mut state = self.0.lock().unwrap();
+        state.phase = PlaybackPhase::Stopped;
+        state.position = 0;
+        state.total = pcm.metadata().frames().get() as u64;
+        Ok(())
+    }
+
+    fn play(&mut self) -> Result<(), String> {
+        self.0.lock().unwrap().phase = PlaybackPhase::Playing;
+        Ok(())
+    }
+
+    fn pause(&mut self) -> Result<(), String> {
+        let mut state = self.0.lock().unwrap();
+        state.phase = if state.position == 0 {
+            PlaybackPhase::Stopped
+        } else {
+            PlaybackPhase::Paused
+        };
+        Ok(())
+    }
+
+    fn seek(&mut self, frame: u64) -> Result<(), String> {
+        let mut state = self.0.lock().unwrap();
+        state.position = frame.min(state.total);
+        if state.phase != PlaybackPhase::Playing {
+            state.phase = if state.position == 0 {
+                PlaybackPhase::Stopped
+            } else if state.position == state.total {
+                PlaybackPhase::Ended
+            } else {
+                PlaybackPhase::Paused
+            };
+        }
+        Ok(())
+    }
+
+    fn stop(&mut self) -> Result<(), String> {
+        let mut state = self.0.lock().unwrap();
+        state.phase = PlaybackPhase::Stopped;
+        state.position = 0;
+        state.stops += 1;
+        Ok(())
+    }
+
+    fn status(&self) -> Result<PlaybackEngineStatus, String> {
+        let state = self.0.lock().unwrap();
+        Ok(PlaybackEngineStatus {
+            phase: state.phase,
+            position_frames: state.position,
+            total_frames: state.total,
+        })
+    }
+}
 
 #[test]
 fn application_open_migrates_in_memory_and_explicit_save_writes_v2() {
@@ -54,6 +133,106 @@ fn import(s: &AppService, path: PathBuf) -> WorkspaceDto {
         .unwrap();
     assert_eq!(wait(s, &job).phase, JobPhase::Succeeded);
     s.current_project().unwrap()
+}
+
+#[test]
+fn playback_is_identity_scoped_seekable_and_stopped_by_source_or_project_transitions() {
+    let backend = TestPlayback::default();
+    let observed = backend.clone();
+    let service = AppService::with_playback(backend);
+    service.new_project("playback".into(), 0, false).unwrap();
+    let imported = import(&service, fixture());
+    let project = imported.project.unwrap();
+    let track = &project.tracks[0];
+
+    let loaded = service
+        .load_playback(&project.id, imported.generation, &track.id, 0.005)
+        .unwrap();
+    assert_eq!(loaded.phase, PlaybackPhase::Paused);
+    assert!((loaded.position - 0.005).abs() < 1.0 / track.sample_rate as f64);
+    assert_eq!(
+        service
+            .play(&project.id, imported.generation, &track.id)
+            .unwrap()
+            .phase,
+        PlaybackPhase::Playing
+    );
+    assert_eq!(
+        service
+            .seek(&project.id, imported.generation, &track.id, track.duration)
+            .unwrap()
+            .phase,
+        PlaybackPhase::Playing
+    );
+    assert!(matches!(
+        service.seek(
+            &project.id,
+            imported.generation,
+            &track.id,
+            track.duration + 1.0
+        ),
+        Err(AppError::Playback(_))
+    ));
+    assert_eq!(
+        service
+            .stop(&project.id, imported.generation, &track.id)
+            .unwrap()
+            .position,
+        0.0
+    );
+
+    service
+        .load_playback(&project.id, imported.generation, &track.id, 0.0)
+        .unwrap();
+    let job = service
+        .analyze_track(&project.id, imported.generation, &track.id)
+        .unwrap();
+    assert!(observed.0.lock().unwrap().stops >= 2);
+    assert!(matches!(
+        service.playback_status(&project.id, imported.generation, &track.id),
+        Err(AppError::NotReady)
+    ));
+    assert_eq!(wait(&service, &job).phase, JobPhase::Succeeded);
+
+    service
+        .load_playback(&project.id, imported.generation, &track.id, 0.0)
+        .unwrap();
+    let next = service
+        .new_project("next".into(), imported.generation, true)
+        .unwrap();
+    assert!(matches!(
+        service.playback_status(&project.id, imported.generation, &track.id),
+        Err(AppError::StaleProject)
+    ));
+    assert_eq!(next.generation, imported.generation + 1);
+}
+
+#[test]
+fn playback_source_change_invalidates_only_derived_state() {
+    let temp = tempfile::tempdir().unwrap();
+    let source = temp.path().join("voice.wav");
+    std::fs::copy(fixture(), &source).unwrap();
+    let service = AppService::with_playback(TestPlayback::default());
+    service.new_project("playback".into(), 0, false).unwrap();
+    let imported = import(&service, source.clone());
+    let project = imported.project.unwrap();
+    service
+        .save_project(
+            &project.id,
+            imported.generation,
+            Some(temp.path().join("song.vocalproj")),
+        )
+        .unwrap();
+    std::fs::write(source, b"changed").unwrap();
+
+    assert!(matches!(
+        service.load_playback(&project.id, imported.generation, &project.tracks[0].id, 0.0),
+        Err(AppError::Playback(_))
+    ));
+    let current = service.current_project().unwrap().project.unwrap();
+    assert_eq!(current.tracks[0].status, SourceStatus::Changed);
+    assert!(current.tracks[0].analysis.is_none());
+    assert!(!current.dirty);
 }
 #[test]
 fn project_save_close_open_verify_analyze_preserves_identity() {

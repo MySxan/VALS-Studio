@@ -1,5 +1,6 @@
 import { createStore } from "zustand/vanilla";
 import {
+  validatePlayback,
   validateWaveform,
   type Backend,
   type Workspace,
@@ -8,6 +9,7 @@ import {
   type Waveform,
   type Job,
   type ProjectRef,
+  type Playback,
 } from "./model";
 interface State {
   workspace: Workspace;
@@ -18,6 +20,9 @@ interface State {
   querying: boolean;
   error: string | null;
   queryError: string | null;
+  playback: Playback | null;
+  transportBusy: boolean;
+  playbackError: string | null;
   notice: string;
 }
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -33,12 +38,17 @@ export function createController(api: Backend) {
     querying: false,
     error: null,
     queryError: null,
+    playback: null,
+    transportBusy: false,
+    playbackError: null,
     notice: "新建或打开工程",
   }));
   let alive = true,
     request = 0,
-    operation = 0;
+    operation = 0,
+    playbackRequest = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let playbackTimer: ReturnType<typeof setTimeout> | undefined;
   const active = () =>
     store
       .getState()
@@ -63,12 +73,19 @@ export function createController(api: Backend) {
       ) ?? tracks[0];
     const reset = changed || selected?.id !== old.activeTrackId;
     ++request;
+    if (reset) {
+      ++playbackRequest;
+      clearTimeout(playbackTimer);
+    }
     store.setState({
       workspace,
       activeTrackId: selected?.id ?? null,
       waveform: null,
       querying: false,
       queryError: null,
+      ...(reset
+        ? { playback: null, transportBusy: false, playbackError: null }
+        : {}),
       ...(reset
         ? {
             viewport: {
@@ -79,6 +96,48 @@ export function createController(api: Backend) {
           }
         : {}),
     });
+  }
+  function playbackIdentity() {
+    const track = active();
+    if (!track) throw new Error("请选择轨道");
+    return { reference: ref(), track };
+  }
+  function acceptPlayback(
+    raw: unknown,
+    reference: ProjectRef,
+    track: Track,
+    stamp: number,
+  ) {
+    if (!alive || stamp !== playbackRequest || active()?.id !== track.id)
+      return null;
+    const value = validatePlayback(raw, reference, track);
+    store.setState({
+      playback: value,
+      transportBusy: false,
+      playbackError: null,
+    });
+    return value;
+  }
+  async function pollPlayback(
+    reference: ProjectRef,
+    track: Track,
+    stamp: number,
+  ) {
+    try {
+      const raw = await api.playbackStatus(reference, track.id);
+      const value = acceptPlayback(raw, reference, track, stamp);
+      if (value?.phase === "playing")
+        playbackTimer = setTimeout(
+          () => void pollPlayback(reference, track, stamp),
+          50,
+        );
+    } catch (error) {
+      if (alive && stamp === playbackRequest)
+        store.setState({
+          transportBusy: false,
+          playbackError: message(error),
+        });
+    }
   }
   async function query() {
     const track = active(),
@@ -179,7 +238,12 @@ export function createController(api: Backend) {
         job: { id, ...reference, trackId, phase: "running", error: null },
       },
       notice: "正在核验音频并分析",
+      playback: null,
+      transportBusy: false,
+      playbackError: null,
     });
+    ++playbackRequest;
+    clearTimeout(playbackTimer);
     void poll(id, revision);
   }
   async function ensureWaveform() {
@@ -357,17 +421,107 @@ export function createController(api: Backend) {
         }
       }
     },
+    async togglePlayback() {
+      const { reference, track } = playbackIdentity();
+      if (track.status !== "ready" || store.getState().transportBusy) return;
+      const stamp = ++playbackRequest;
+      clearTimeout(playbackTimer);
+      store.setState({ transportBusy: true, playbackError: null });
+      try {
+        const currentPlayback = store.getState().playback;
+        const raw =
+          currentPlayback?.trackId === track.id &&
+          currentPlayback.phase === "playing"
+            ? await api.pause(reference, track.id)
+            : currentPlayback?.trackId === track.id
+              ? await api.play(reference, track.id)
+              : (await api.loadPlayback(
+                  reference,
+                  track.id,
+                  store.getState().viewport.start,
+                ),
+                await api.play(reference, track.id));
+        const value = acceptPlayback(raw, reference, track, stamp);
+        if (value?.phase === "playing") void pollPlayback(reference, track, stamp);
+      } catch (error) {
+        if (alive && stamp === playbackRequest)
+          store.setState({
+            transportBusy: false,
+            playbackError: message(error),
+          });
+      }
+    },
+    async stopPlayback() {
+      const currentPlayback = store.getState().playback;
+      const track = active();
+      if (!track || currentPlayback?.trackId !== track.id) return;
+      const reference = ref(),
+        stamp = ++playbackRequest;
+      clearTimeout(playbackTimer);
+      store.setState({ transportBusy: true, playbackError: null });
+      try {
+        acceptPlayback(
+          await api.stop(reference, track.id),
+          reference,
+          track,
+          stamp,
+        );
+      } catch (error) {
+        if (alive && stamp === playbackRequest)
+          store.setState({
+            transportBusy: false,
+            playbackError: message(error),
+          });
+      }
+    },
+    async seekPlayback(position: number) {
+      const { reference, track } = playbackIdentity();
+      if (
+        track.status !== "ready" ||
+        !Number.isFinite(position) ||
+        position < 0 ||
+        position > track.duration
+      )
+        return;
+      const stamp = ++playbackRequest;
+      clearTimeout(playbackTimer);
+      store.setState({ transportBusy: true, playbackError: null });
+      try {
+        const currentPlayback = store.getState().playback;
+        const raw =
+          currentPlayback?.trackId === track.id
+            ? await api.seek(reference, track.id, position)
+            : await api.loadPlayback(reference, track.id, position);
+        const value = acceptPlayback(raw, reference, track, stamp);
+        if (value?.phase === "playing") void pollPlayback(reference, track, stamp);
+      } catch (error) {
+        if (alive && stamp === playbackRequest)
+          store.setState({
+            transportBusy: false,
+            playbackError: message(error),
+          });
+      }
+    },
     selectTrack(id: string) {
       if (store.getState().busy) return;
+      const previous = active(),
+        previousPlayback = store.getState().playback;
       const track = store
         .getState()
         .workspace.project?.tracks.find((t) => t.id === id);
       if (!track) return;
+      if (previous && previousPlayback?.trackId === previous.id)
+        void api.stop(ref(), previous.id).catch(() => undefined);
       ++request;
+      ++playbackRequest;
+      clearTimeout(playbackTimer);
       store.setState({
         activeTrackId: id,
         waveform: null,
         queryError: null,
+        playback: null,
+        transportBusy: false,
+        playbackError: null,
         viewport: {
           ...store.getState().viewport,
           start: 0,
@@ -412,6 +566,7 @@ export function createController(api: Backend) {
       ++operation;
       ++request;
       clearTimeout(timer);
+      clearTimeout(playbackTimer);
     },
   };
 }

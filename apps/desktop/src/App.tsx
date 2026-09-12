@@ -23,7 +23,9 @@ export function App({
     project = state.workspace.project,
     track = controller.activeTrack(),
     view = state.viewport,
-    analysis = track?.analysis;
+    analysis = track?.analysis,
+    playback = state.playback?.trackId === track?.id ? state.playback : null,
+    position = playback?.position ?? view.start;
   const [name, setName] = useState("Untitled");
   const disabled = !available || state.busy || preview;
   const resize = useCallback(
@@ -128,9 +130,9 @@ export function App({
           请通过 Tauri 桌面应用打开，以使用本地工程与音频文件。
         </p>
       )}
-      {(state.error || state.queryError) && (
+      {(state.error || state.queryError || state.playbackError) && (
         <div role="alert" className="error">
-          {state.error || state.queryError}
+          {state.error || state.queryError || state.playbackError}
         </div>
       )}
       <div className="workspace">
@@ -204,7 +206,38 @@ export function App({
                 view={view}
                 data={state.waveform}
                 resize={resize}
+                playhead={playback?.position ?? null}
               />
+              <div className="transport" aria-label="播放控制">
+                <button
+                  className="play"
+                  disabled={disabled || track.status !== "ready" || state.transportBusy}
+                  onClick={() => void controller.togglePlayback()}
+                >
+                  {playback?.phase === "playing" ? "Ⅱ 暂停" : "▶ 播放"}
+                </button>
+                <button
+                  disabled={disabled || !playback || state.transportBusy}
+                  onClick={() => void controller.stopPlayback()}
+                >
+                  ■ 停止
+                </button>
+                <input
+                  aria-label="播放位置"
+                  type="range"
+                  min={0}
+                  max={track.duration}
+                  step={1 / track.sampleRate}
+                  value={Math.min(track.duration, position)}
+                  disabled={disabled || track.status !== "ready" || state.transportBusy}
+                  onChange={(event) =>
+                    void controller.seekPlayback(Number(event.target.value))
+                  }
+                />
+                <output>
+                  {position.toFixed(3)} / {track.duration.toFixed(3)} s
+                </output>
+              </div>
               <div className="wave-footer">
                 <span>
                   <i />

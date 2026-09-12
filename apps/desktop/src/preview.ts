@@ -21,4 +21,10 @@ export const previewBackend: Backend = {
   cancelJob: unavailable,
   waveform: async (ref, track, view) =>
     validateWaveform(fixture.waveform, ref, track, view),
+  loadPlayback: unavailable,
+  play: unavailable,
+  pause: unavailable,
+  seek: unavailable,
+  stop: unavailable,
+  playbackStatus: unavailable,
 };

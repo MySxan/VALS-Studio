@@ -177,6 +177,27 @@ aside {
   font-size: 10px;
   color: #9bb0b9;
 }
+.transport {
+  display: grid;
+  grid-template-columns: auto auto minmax(120px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid #303e46;
+}
+.transport .play {
+  color: #c8f4e6;
+}
+.transport input {
+  accent-color: #76d9ba;
+  width: 100%;
+}
+.transport output {
+  color: #9bb0b9;
+  font: 10px monospace;
+  min-width: 115px;
+  text-align: right;
+}
 .wave-footer i {
   display: inline-block;
   width: 6px;
@@ -332,6 +353,13 @@ code {
   }
   h1 {
     font-size: 23px;
+  }
+  .transport {
+    grid-template-columns: auto auto 1fr;
+  }
+  .transport output {
+    grid-column: 1 / -1;
+    text-align: left;
   }
 }
 @media (prefers-reduced-motion: reduce) {

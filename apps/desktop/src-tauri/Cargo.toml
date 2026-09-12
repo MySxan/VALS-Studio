@@ -11,9 +11,11 @@ publish = false
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+cpal = "0.18.2"
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 vocal-app = { path = "../../../crates/vocal-app" }
+vocal-domain = { path = "../../../crates/vocal-domain" }
 
 [dev-dependencies]
 tauri = { version = "2", features = ["test"] }

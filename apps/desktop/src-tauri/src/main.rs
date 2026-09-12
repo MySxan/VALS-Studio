@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use tauri::State;
-use vocal_app::{AppService, JobStatus, WaveformDto, WorkspaceDto};
+use vocal_app::{AppService, JobStatus, PlaybackDto, WaveformDto, WorkspaceDto};
+mod playback;
 #[cfg(test)]
 mod tests;
 async fn blocking<T: Send + 'static>(
@@ -110,10 +111,72 @@ async fn waveform_slice(
     let s = service.inner().clone();
     blocking(move || s.waveform_slice(&project_id, generation, &track_id, start, end, width)).await
 }
+#[tauri::command]
+async fn load_playback(
+    service: State<'_, AppService>,
+    project_id: String,
+    generation: u64,
+    track_id: String,
+    position: f64,
+) -> Result<PlaybackDto, String> {
+    let s = service.inner().clone();
+    blocking(move || s.load_playback(&project_id, generation, &track_id, position)).await
+}
+#[tauri::command]
+async fn playback_play(
+    service: State<'_, AppService>,
+    project_id: String,
+    generation: u64,
+    track_id: String,
+) -> Result<PlaybackDto, String> {
+    let s = service.inner().clone();
+    blocking(move || s.play(&project_id, generation, &track_id)).await
+}
+#[tauri::command]
+async fn playback_pause(
+    service: State<'_, AppService>,
+    project_id: String,
+    generation: u64,
+    track_id: String,
+) -> Result<PlaybackDto, String> {
+    let s = service.inner().clone();
+    blocking(move || s.pause(&project_id, generation, &track_id)).await
+}
+#[tauri::command]
+async fn playback_seek(
+    service: State<'_, AppService>,
+    project_id: String,
+    generation: u64,
+    track_id: String,
+    position: f64,
+) -> Result<PlaybackDto, String> {
+    let s = service.inner().clone();
+    blocking(move || s.seek(&project_id, generation, &track_id, position)).await
+}
+#[tauri::command]
+async fn playback_stop(
+    service: State<'_, AppService>,
+    project_id: String,
+    generation: u64,
+    track_id: String,
+) -> Result<PlaybackDto, String> {
+    let s = service.inner().clone();
+    blocking(move || s.stop(&project_id, generation, &track_id)).await
+}
+#[tauri::command]
+async fn playback_status(
+    service: State<'_, AppService>,
+    project_id: String,
+    generation: u64,
+    track_id: String,
+) -> Result<PlaybackDto, String> {
+    let s = service.inner().clone();
+    blocking(move || s.playback_status(&project_id, generation, &track_id)).await
+}
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .manage(AppService::default())
+        .manage(AppService::with_playback(playback::CpalPlayback::default()))
         .invoke_handler(tauri::generate_handler![
             current_project,
             new_project,
@@ -125,7 +188,13 @@ fn main() {
             relink_track,
             job_status,
             cancel_job,
-            waveform_slice
+            waveform_slice,
+            load_playback,
+            playback_play,
+            playback_pause,
+            playback_seek,
+            playback_stop,
+            playback_status
         ])
         .run(tauri::generate_context!())
         .expect("failed to run VALS Studio");

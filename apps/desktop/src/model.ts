@@ -97,11 +97,22 @@ export const waveformSchema = z.object({
     .min(1)
     .max(2),
 });
+export const playbackSchema = z
+  .object({
+    projectId: uuid,
+    generation: integer.nonnegative(),
+    trackId: uuid,
+    phase: z.enum(["stopped", "paused", "playing", "ended"]),
+    position: finite.nonnegative(),
+    duration: finite.positive(),
+  })
+  .refine((value) => value.position <= value.duration);
 export type Track = z.infer<typeof trackSchema>;
 export type Workspace = z.infer<typeof workspaceSchema>;
 export type Project = NonNullable<Workspace["project"]>;
 export type Job = z.infer<typeof jobSchema>;
 export type Waveform = z.infer<typeof waveformSchema>;
+export type Playback = z.infer<typeof playbackSchema>;
 export interface ProjectRef {
   projectId: string;
   generation: number;
@@ -134,6 +145,16 @@ export interface Backend {
   jobStatus(id: string): Promise<Job>;
   cancelJob(id: string): Promise<void>;
   waveform(ref: ProjectRef, track: Track, view: Viewport): Promise<Waveform>;
+  loadPlayback(
+    ref: ProjectRef,
+    trackId: string,
+    position: number,
+  ): Promise<Playback>;
+  play(ref: ProjectRef, trackId: string): Promise<Playback>;
+  pause(ref: ProjectRef, trackId: string): Promise<Playback>;
+  seek(ref: ProjectRef, trackId: string, position: number): Promise<Playback>;
+  stop(ref: ProjectRef, trackId: string): Promise<Playback>;
+  playbackStatus(ref: ProjectRef, trackId: string): Promise<Playback>;
 }
 export function validateWaveform(
   raw: unknown,
@@ -152,4 +173,19 @@ export function validateWaveform(
   )
     throw new Error("波形响应与工程、轨道或视口不匹配");
   return wave;
+}
+export function validatePlayback(
+  raw: unknown,
+  ref: ProjectRef,
+  track: Track,
+): Playback {
+  const playback = playbackSchema.parse(raw);
+  if (
+    playback.projectId !== ref.projectId ||
+    playback.generation !== ref.generation ||
+    playback.trackId !== track.id ||
+    Math.abs(playback.duration - track.duration) > 1 / track.sampleRate
+  )
+    throw new Error("播放响应与工程、轨道或音频时长不匹配");
+  return playback;
 }

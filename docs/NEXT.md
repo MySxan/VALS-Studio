@@ -1,9 +1,9 @@
 # 下一阶段
 
-目标：实现首个独立播放 vertical slice，让已核验 WAV 可从当前视口位置播放、暂停和 seek，并让播放光标与后端时钟同步。
+目标：实现首个手工 note/lyrics vertical slice，让用户事实可编辑、保存、重开并导出基础 JSON。
 
-推荐 vertical slice：新增独立 `PlaybackEngine` adapter 与 application playback session；只播放当前已核验 source，不复用 analysis PCM，不把播放状态写入 `VocalProject`。IPC 提供 load/play/pause/seek/status/stop 的粗粒度命令，前端 transport 轮询轻量状态并绘制独立光标。工程切换、Relink、源失效或应用关闭必须停止旧播放；音频 callback 不做锁等待、日志、分析或大块分配。
+推荐 vertical slice：先按 SDD 的 user override 边界补齐 domain note/lyric 实体与明确校验，再以 schema migration 持久化；应用层提供按稳定 identity 的新增/修改/删除命令，UI 在时间轴上编辑并标示用户来源。JSON 导出只序列化当前 `VocalProject` 用户事实与版本信息，不导出分析 PCM/波形缓存。
 
-依赖：先确定 CPAL 设备输出与可测试时钟/无设备 fallback 的 adapter 边界，复用现有路径解析和 source 内容核验；新增依赖前更新许可清单。第一切片只承诺 WAV PCM，播放不是 analyzer，不新增 analysis artifact/cache key 或持久化 schema。
+依赖：在改 schema 前写清 note pitch/time/duration、lyric text/syllable 关联和 override provenance 的最小不变量，并沿用现有 migration/原子保存流程。若 SDD 对首个实体字段不足以作唯一实现选择，先提交 ADR 供用户批准；不要让分析结果覆盖手工实体。
 
-暂缓的验证缺口：真实 Windows 文件选择器与窗口关闭仍需交互式原生验收，现有 MockRuntime、浏览器测试和文件系统 verifier 均不能替代。播放完成后继续手工 note/lyrics、JSON 导出与 undo/redo；长音频分块分析保持独立后续切片。
+暂缓的验证缺口：真实 Windows 文件选择器、扬声器播放与窗口关闭仍需交互式原生验收，现有 MockRuntime、浏览器测试和文件系统 verifier 均不能替代。播放的设备选择/重采样/loop/延迟补偿、长音频分块分析与 undo/redo 保持独立后续切片。

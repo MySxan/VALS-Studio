@@ -140,6 +140,11 @@ impl AppService {
             other => other,
         };
         state.idle()?;
+        self.0
+            .playback
+            .lock()
+            .map_err(|_| AppError::Unavailable)?
+            .clear();
         let id = EntityId::new().to_string();
         let token = CancellationToken::default();
         let track_id = track.as_ref().map(|t| t.id.to_string());

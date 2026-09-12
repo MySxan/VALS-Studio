@@ -1,4 +1,5 @@
 use crate::OpenProject;
+use crate::PlaybackPhase;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use vocal_analysis_api::AnalysisArtifact;
@@ -208,4 +209,15 @@ pub struct PointDto {
     pub min: f32,
     pub max: f32,
     pub rms: f64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaybackDto {
+    pub project_id: String,
+    pub generation: u64,
+    pub track_id: String,
+    pub phase: PlaybackPhase,
+    pub position: f64,
+    pub duration: f64,
 }

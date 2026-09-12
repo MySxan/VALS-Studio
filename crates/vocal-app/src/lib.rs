@@ -2,9 +2,11 @@
 mod dto;
 mod jobs;
 mod paths;
+mod playback;
 #[cfg(test)]
 mod tests;
 pub use dto::*;
+pub use playback::{PlaybackEngine, PlaybackEngineStatus, PlaybackPhase};
 use std::{
     collections::HashMap,
     path::PathBuf,
@@ -21,6 +23,7 @@ pub struct AppService(Arc<Inner>);
 struct Inner {
     state: Mutex<State>,
     runtime: Mutex<AnalysisRuntime>,
+    playback: Mutex<playback::PlaybackSession>,
 }
 #[derive(Default)]
 struct State {
@@ -51,7 +54,9 @@ pub enum AppError {
     UnsavedChanges,
     InvalidPath,
     InvalidViewport,
+    InvalidPlaybackPosition,
     Unavailable,
+    Playback(String),
     Storage(String),
 }
 impl std::fmt::Display for AppError {
@@ -65,7 +70,9 @@ impl std::fmt::Display for AppError {
             Self::UnsavedChanges => "工程有未保存的修改",
             Self::InvalidPath => "请选择 .vocalproj 路径，且不可覆盖音频源",
             Self::InvalidViewport => "无效的波形视口",
+            Self::InvalidPlaybackPosition => "无效的播放位置",
             Self::Unavailable => "应用服务不可用",
+            Self::Playback(message) => message,
             Self::Storage(message) => message,
         })
     }
@@ -73,10 +80,7 @@ impl std::fmt::Display for AppError {
 impl std::error::Error for AppError {}
 impl Default for AppService {
     fn default() -> Self {
-        Self(Arc::new(Inner {
-            state: Mutex::new(State::default()),
-            runtime: Mutex::new(AnalysisRuntime::new(128 * 1024 * 1024)),
-        }))
+        Self::with_playback(playback::DisabledPlayback)
     }
 }
 impl State {
@@ -138,6 +142,11 @@ impl AppService {
     ) -> Result<WorkspaceDto, AppError> {
         let mut state = self.0.state.lock().map_err(|_| AppError::Unavailable)?;
         state.replaceable(generation, discard)?;
+        self.0
+            .playback
+            .lock()
+            .map_err(|_| AppError::Unavailable)?
+            .clear();
         state.generation += 1;
         state.project = Some(OpenProject {
             domain: VocalProject::new(name),
@@ -163,6 +172,11 @@ impl AppService {
         let domain = ProjectStore::default()
             .load(&path)
             .map_err(|e| AppError::Storage(e.to_string()))?;
+        self.0
+            .playback
+            .lock()
+            .map_err(|_| AppError::Unavailable)?
+            .clear();
         state.generation += 1;
         state.project = Some(OpenProject {
             domain,
@@ -176,6 +190,11 @@ impl AppService {
     pub fn close_project(&self, generation: u64, discard: bool) -> Result<WorkspaceDto, AppError> {
         let mut state = self.0.state.lock().map_err(|_| AppError::Unavailable)?;
         state.replaceable(generation, discard)?;
+        self.0
+            .playback
+            .lock()
+            .map_err(|_| AppError::Unavailable)?
+            .clear();
         state.generation += 1;
         state.project = None;
         state.job = None;
