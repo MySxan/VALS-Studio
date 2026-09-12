@@ -339,3 +339,38 @@ code {
     animation: none;
   }
 }
+.project-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 22px;
+}
+.project-actions input,
+select {
+  font: inherit;
+  font-size: 12px;
+  background: #202c32;
+  color: #dde8e9;
+  border: 1px solid #35444b;
+  border-radius: 6px;
+  padding: 7px;
+  min-width: 0;
+}
+.project-actions input {
+  width: 160px;
+}
+.toolbar select {
+  max-width: 230px;
+}
+.retry {
+  margin-top: 16px;
+}
+.title p {
+  overflow-wrap: anywhere;
+}
+.title > div {
+  min-width: 0;
+}
+.title .badge {
+  flex-shrink: 0;
+}

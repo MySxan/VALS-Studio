@@ -1,4 +1,4 @@
-use crate::audio::{AudioDomainError, AudioSource, VocalTrack};
+use crate::audio::{AudioDomainError, AudioSource, AudioUri, VocalTrack};
 use crate::identity::EntityId;
 use std::collections::HashSet;
 
@@ -43,6 +43,25 @@ impl VocalProject {
     }
     pub fn tracks(&self) -> &[VocalTrack] {
         &self.tracks
+    }
+
+    /// Changes location only. The application must verify candidate content first.
+    /// Identity, source facts, tracks and all other project data remain untouched.
+    pub fn set_source_uri(&mut self, id: EntityId, uri: AudioUri) -> Result<(), AudioDomainError> {
+        let source = self
+            .sources
+            .iter_mut()
+            .find(|s| s.id() == id)
+            .ok_or(AudioDomainError("unknown audio source"))?;
+        let replacement = AudioSource::new(
+            source.id(),
+            uri,
+            source.content_hash(),
+            source.size_bytes(),
+            source.metadata(),
+        )?;
+        *source = replacement;
+        Ok(())
     }
 
     pub fn with_audio(

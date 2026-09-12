@@ -1,5 +1,7 @@
 # Phase 0：Tauri / React 波形预览
 
+> 历史阶段记录。当前已改为 [Project-backed 工作流](phase-0-project-backed-desktop.md)，新增工程操作并移除 session-based IPC。
+
 本切片实现选择 WAV → 后台分析 → Canvas 波形预览。遵守 SDD 的 Tauri 2、React/TypeScript、Zustand、Zod 与 DTO 分离约束；无 ADR 变更。
 
 ## Crates / modules

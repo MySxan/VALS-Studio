@@ -1,170 +1,403 @@
 import { createStore } from "zustand/vanilla";
-import type { Backend, Job, Session, Viewport, Waveform } from "./model";
-import { validateWaveform } from "./model";
-
+import {
+  validateWaveform,
+  type Backend,
+  type Workspace,
+  type Track,
+  type Viewport,
+  type Waveform,
+  type Job,
+  type ProjectRef,
+} from "./model";
 interface State {
-  session: Session | null;
+  workspace: Workspace;
+  activeTrackId: string | null;
   viewport: Viewport;
   waveform: Waveform | null;
   busy: boolean;
   querying: boolean;
-  job: Job | null;
   error: string | null;
   queryError: string | null;
   notice: string;
 }
-const message = (error: unknown) =>
-  error instanceof Error ? error.message : String(error);
-
+const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
+export const terminal = (job: Job) =>
+  !["running", "cancelling"].includes(job.phase);
 export function createController(api: Backend) {
   const store = createStore<State>(() => ({
-    session: null,
+    workspace: { generation: 0, project: null, job: null },
+    activeTrackId: null,
     viewport: { start: 0, end: 1, width: 800 },
     waveform: null,
     busy: false,
     querying: false,
-    job: null,
     error: null,
     queryError: null,
-    notice: "准备就绪",
+    notice: "新建或打开工程",
   }));
-  let alive = true;
-  let generation = 0;
-  let sessionGeneration = 0;
+  let alive = true,
+    request = 0,
+    operation = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  function publish(session: Session | null) {
-    generation++;
+  const active = () =>
+    store
+      .getState()
+      .workspace.project?.tracks.find(
+        (t) => t.id === store.getState().activeTrackId,
+      ) ?? null;
+  const ref = (): ProjectRef => {
+    const w = store.getState().workspace;
+    if (!w.project) throw new Error("请先新建或打开工程");
+    return { projectId: w.project.id, generation: w.generation };
+  };
+  const current = (revision: number) => alive && operation === revision;
+  function publish(workspace: Workspace, preferred?: string | null) {
+    const old = store.getState();
+    const changed =
+      old.workspace.generation !== workspace.generation ||
+      old.workspace.project?.id !== workspace.project?.id;
+    const tracks = workspace.project?.tracks ?? [];
+    const selected =
+      tracks.find(
+        (t) => t.id === (preferred ?? (changed ? null : old.activeTrackId)),
+      ) ?? tracks[0];
+    const reset = changed || selected?.id !== old.activeTrackId;
+    ++request;
     store.setState({
-      session,
+      workspace,
+      activeTrackId: selected?.id ?? null,
       waveform: null,
-      viewport: {
-        ...store.getState().viewport,
-        start: 0,
-        end: session?.duration ?? 1,
-      },
+      querying: false,
+      queryError: null,
+      ...(reset
+        ? {
+            viewport: {
+              ...old.viewport,
+              start: 0,
+              end: selected?.duration ?? 1,
+            },
+          }
+        : {}),
     });
-    void query();
   }
   async function query() {
-    const request = ++generation;
-    const { session, viewport } = store.getState();
-    if (!session) return;
+    const track = active(),
+      stamp = ++request;
+    if (!track?.analysis) return;
+    const reference = ref(),
+      view = store.getState().viewport;
     store.setState({ querying: true, waveform: null });
     try {
-      const raw = await api.waveform(session, viewport);
-      if (!alive || request !== generation) return;
-      store.setState({
-        waveform: validateWaveform(raw, session, viewport),
-        querying: false,
-        queryError: null,
-      });
-    } catch (error) {
-      if (alive && request === generation)
-        store.setState({ querying: false, queryError: message(error) });
+      const value = await api.waveform(reference, track, view);
+      if (alive && stamp === request)
+        store.setState({
+          waveform: validateWaveform(value, reference, track, view),
+          querying: false,
+          queryError: null,
+        });
+    } catch (e) {
+      if (alive && stamp === request)
+        store.setState({ querying: false, queryError: message(e) });
     }
   }
-  async function poll(id: string) {
-    if (!alive) return;
+  function begin(): number | null {
+    if (store.getState().busy) return null;
+    store.setState({ busy: true, error: null });
+    return ++operation;
+  }
+  async function poll(id: string, revision: number) {
     try {
       const job = await api.jobStatus(id);
-      if (!alive) return;
-      if (job.id !== id) throw new Error("任务响应 ID 不匹配");
-      store.setState({ job });
-      if (job.phase === "running" || job.phase === "cancelling") {
-        timer = setTimeout(() => void poll(id), 200);
+      if (!current(revision)) return;
+      const reference = ref();
+      if (
+        job.id !== id ||
+        job.projectId !== reference.projectId ||
+        job.generation !== reference.generation
+      )
+        throw new Error("任务响应与当前工程不匹配");
+      store.setState({ workspace: { ...store.getState().workspace, job } });
+      if (!terminal(job)) {
+        timer = setTimeout(() => void poll(id, revision), 200);
         return;
       }
-      if (job.phase === "succeeded") {
-        const session = await api.currentSession();
-        if (!alive) return;
-        if (!session) throw new Error("分析完成但会话不可用");
-        publish(session);
-      }
+      const workspace = await api.currentProject();
+      if (!current(revision)) return;
+      if (
+        workspace.generation !== reference.generation ||
+        workspace.project?.id !== reference.projectId
+      )
+        throw new Error("工程已切换，请重新打开");
+      publish(
+        workspace,
+        job.phase === "succeeded"
+          ? job.trackId
+          : store.getState().activeTrackId,
+      );
       store.setState({
         busy: false,
-        error: job.phase === "failed" ? (job.error ?? "分析失败") : null,
+        error: job.phase === "failed" ? job.error : null,
         notice:
           job.phase === "succeeded"
             ? "波形已就绪"
             : job.phase === "cancelled"
-              ? "已取消，保留原会话"
-              : "导入失败，保留原会话",
+              ? "已取消，工程未被分析任务修改"
+              : "分析失败，请检查源文件状态",
       });
-    } catch (error) {
-      // Keep busy while job state is unknown, allowing cancellation and status recovery.
-      if (alive) {
+      void query();
+    } catch (e) {
+      if (current(revision)) {
         store.setState({
-          error: message(error),
+          error: message(e),
           notice: "无法读取任务状态，正在重试",
         });
-        timer = setTimeout(() => void poll(id), 1000);
+        timer = setTimeout(() => void poll(id, revision), 1000);
       }
+    }
+  }
+  function jobStarted(
+    id: string,
+    revision: number,
+    trackId: string | null,
+    preserve = false,
+  ) {
+    const reference = ref();
+    const workspace = store.getState().workspace;
+    store.setState({
+      workspace: {
+        ...workspace,
+        project: workspace.project
+          ? {
+              ...workspace.project,
+              tracks: workspace.project.tracks.map((t) =>
+                t.id === trackId && !preserve
+                  ? { ...t, status: "analyzing", analysis: null, error: null }
+                  : t,
+              ),
+            }
+          : null,
+        job: { id, ...reference, trackId, phase: "running", error: null },
+      },
+      notice: "正在核验音频并分析",
+    });
+    void poll(id, revision);
+  }
+  async function ensureWaveform() {
+    const track = active();
+    if (!track) return;
+    if (track.status === "ready") {
+      void query();
+      return;
+    }
+    if (track.status !== "unchecked") return;
+    const revision = begin();
+    if (revision === null) return;
+    try {
+      const id = await api.analyzeTrack(ref(), track.id);
+      if (current(revision)) jobStarted(id, revision, track.id);
+      else await api.cancelJob(id);
+    } catch (e) {
+      if (current(revision)) store.setState({ busy: false, error: message(e) });
+    }
+  }
+  async function switchProject(
+    kind: "new" | "open" | "close",
+    name = "Untitled",
+  ): Promise<boolean> {
+    const revision = begin();
+    if (revision === null) return false;
+    try {
+      const state = store.getState().workspace;
+      // File selection first; cancelling Open must not discard the current project.
+      const path = kind === "open" ? await api.chooseFile("project") : null;
+      if (!current(revision)) return false;
+      if (kind === "open" && !path) {
+        store.setState({ busy: false });
+        return false;
+      }
+      const discard = state.project?.dirty ? await api.confirmDiscard() : false;
+      if (!current(revision)) return false;
+      if (state.project?.dirty && !discard) {
+        store.setState({ busy: false });
+        return false;
+      }
+      const result =
+        kind === "new"
+          ? await api.newProject(name, state.generation, discard)
+          : kind === "open"
+            ? await api.openProject(path!, state.generation, discard)
+            : await api.closeProject(state.generation, discard);
+      if (!current(revision)) return false;
+      publish(result);
+      store.setState({
+        busy: false,
+        notice:
+          kind === "close"
+            ? "工程已关闭"
+            : kind === "new"
+              ? "工程已新建"
+              : "工程已打开",
+      });
+      void ensureWaveform();
+      return true;
+    } catch (e) {
+      if (current(revision)) store.setState({ busy: false, error: message(e) });
+      return false;
     }
   }
   return {
     store,
+    activeTrack: active,
     async initialize() {
-      const revision = sessionGeneration;
+      const revision = begin();
+      if (revision === null) return;
       try {
-        const session = await api.currentSession();
-        if (alive && revision === sessionGeneration) publish(session);
-      } catch (error) {
-        if (alive && revision === sessionGeneration)
-          store.setState({ error: message(error) });
+        const result = await api.currentProject();
+        if (!current(revision)) return;
+        publish(result);
+        if (result.job && !terminal(result.job)) {
+          jobStarted(result.job.id, revision, result.job.trackId, true);
+        } else {
+          store.setState({
+            busy: false,
+            notice: result.project ? "工程已恢复" : "新建或打开工程",
+          });
+          void ensureWaveform();
+        }
+      } catch (e) {
+        if (current(revision))
+          store.setState({ busy: false, error: message(e) });
+      }
+    },
+    newProject: (name: string) => switchProject("new", name),
+    openProject: () => switchProject("open"),
+    closeProject: () => switchProject("close"),
+    async saveProject(as = false) {
+      const revision = begin();
+      if (revision === null) return;
+      try {
+        const reference = ref(),
+          project = store.getState().workspace.project!;
+        let path: string | null = null;
+        if (as || !project.path) {
+          path = await api.chooseSavePath(project.name);
+          if (!current(revision)) return;
+          if (!path) {
+            store.setState({ busy: false });
+            return;
+          }
+        }
+        const saved = await api.saveProject(reference, path);
+        if (!current(revision)) return;
+        // Save does not change derived state or viewport; retain the currently rendered wave.
+        store.setState({ workspace: saved, busy: false, notice: "工程已保存" });
+      } catch (e) {
+        if (current(revision))
+          store.setState({ busy: false, error: message(e) });
       }
     },
     async importFile() {
-      if (store.getState().busy) return;
-      sessionGeneration++;
-      store.setState({
-        busy: true,
-        error: null,
-        job: null,
-        notice: "选择 WAV 文件",
-      });
+      const revision = begin();
+      if (revision === null) return;
       try {
-        const path = await api.chooseFile();
-        if (!alive) return;
+        const reference = ref(),
+          path = await api.chooseFile("audio");
+        if (!current(revision)) return;
         if (!path) {
-          store.setState({ busy: false, notice: "未选择文件" });
+          store.setState({ busy: false });
           return;
         }
-        const id = await api.startImport(path);
-        if (!alive) {
+        const id = await api.startImport(reference, path);
+        if (!current(revision)) {
           await api.cancelJob(id);
           return;
         }
-        store.setState({
-          job: { id, phase: "running", error: null },
-          notice: "正在导入并分析",
-        });
-        void poll(id);
-      } catch (error) {
-        if (alive) store.setState({ busy: false, error: message(error) });
+        jobStarted(id, revision, null);
+      } catch (e) {
+        if (current(revision))
+          store.setState({ busy: false, error: message(e) });
       }
     },
+    async relinkTrack() {
+      const track = active();
+      if (!track) return;
+      const revision = begin();
+      if (revision === null) return;
+      try {
+        const reference = ref(),
+          path = await api.chooseFile("audio");
+        if (!current(revision)) return;
+        if (!path) {
+          store.setState({ busy: false });
+          return;
+        }
+        const id = await api.relinkTrack(reference, track.id, path);
+        if (current(revision)) jobStarted(id, revision, track.id, true);
+        else await api.cancelJob(id);
+      } catch (e) {
+        if (current(revision))
+          store.setState({ busy: false, error: message(e) });
+      }
+    },
+    async retryTrack() {
+      const track = active();
+      if (!track) return;
+      const revision = begin();
+      if (revision === null) return;
+      try {
+        ++request;
+        store.setState({ waveform: null });
+        const id = await api.analyzeTrack(ref(), track.id);
+        if (current(revision)) jobStarted(id, revision, track.id);
+        else await api.cancelJob(id);
+      } catch (e) {
+        if (current(revision)) {
+          store.setState({ busy: false, error: message(e) });
+          void query();
+        }
+      }
+    },
+    selectTrack(id: string) {
+      if (store.getState().busy) return;
+      const track = store
+        .getState()
+        .workspace.project?.tracks.find((t) => t.id === id);
+      if (!track) return;
+      ++request;
+      store.setState({
+        activeTrackId: id,
+        waveform: null,
+        queryError: null,
+        viewport: {
+          ...store.getState().viewport,
+          start: 0,
+          end: track.duration,
+        },
+      });
+      void ensureWaveform();
+    },
     async cancel() {
-      const job = store.getState().job;
-      if (!job || !store.getState().busy) return;
+      const job = store.getState().workspace.job;
+      if (!job || terminal(job)) return;
       try {
         await api.cancelJob(job.id);
         if (alive) store.setState({ notice: "正在取消" });
-      } catch (error) {
-        if (alive) store.setState({ error: message(error) });
+      } catch (e) {
+        if (alive) store.setState({ error: message(e) });
       }
     },
     view(start: number, end: number, width = store.getState().viewport.width) {
-      const duration = store.getState().session?.duration;
+      const track = active();
       if (
-        !duration ||
+        !track ||
         !Number.isFinite(start) ||
         !Number.isFinite(end) ||
         end <= start ||
         !Number.isFinite(width)
       )
         return;
-      const span = Math.min(duration, end - start);
-      start = Math.max(0, Math.min(start, duration - span));
+      const span = Math.min(track.duration, end - start);
+      start = Math.max(0, Math.min(start, track.duration - span));
       store.setState({
         viewport: {
           start,
@@ -176,7 +409,8 @@ export function createController(api: Backend) {
     },
     dispose() {
       alive = false;
-      generation++;
+      ++operation;
+      ++request;
       clearTimeout(timer);
     },
   };

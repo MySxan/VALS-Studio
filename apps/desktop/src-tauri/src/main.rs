@@ -1,63 +1,130 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
 use tauri::State;
-use vocal_app::{AppError, AppService, JobStatus, SessionDto, WaveformDto};
-
+use vocal_app::{AppService, JobStatus, WaveformDto, WorkspaceDto};
 #[cfg(test)]
 mod tests;
-
-fn error(e: AppError) -> String {
-    match e {
-        AppError::Busy => "已有分析任务正在运行",
-        AppError::UnknownJob => "任务不存在",
-        AppError::StaleSession => "预览会话已更新",
-        AppError::InvalidViewport => "无效的波形视口",
-        AppError::Unavailable => "分析服务不可用",
-    }
-    .into()
+async fn blocking<T: Send + 'static>(
+    work: impl FnOnce() -> Result<T, vocal_app::AppError> + Send + 'static,
+) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(work)
+        .await
+        .map_err(|_| "应用任务失败".to_string())?
+        .map_err(|e| e.to_string())
 }
 #[tauri::command]
-fn start_import(service: State<'_, AppService>, path: String) -> Result<String, String> {
-    service.start_import(path.into()).map_err(error)
+async fn current_project(service: State<'_, AppService>) -> Result<WorkspaceDto, String> {
+    let s = service.inner().clone();
+    blocking(move || s.current_project()).await
 }
 #[tauri::command]
-fn job_status(service: State<'_, AppService>, id: String) -> Result<JobStatus, String> {
-    service.job_status(&id).map_err(error)
+async fn new_project(
+    service: State<'_, AppService>,
+    name: String,
+    generation: u64,
+    discard: bool,
+) -> Result<WorkspaceDto, String> {
+    let s = service.inner().clone();
+    blocking(move || s.new_project(name, generation, discard)).await
 }
 #[tauri::command]
-fn cancel_job(service: State<'_, AppService>, id: String) -> Result<(), String> {
-    service.cancel_job(&id).map_err(error)
+async fn open_project(
+    service: State<'_, AppService>,
+    path: String,
+    generation: u64,
+    discard: bool,
+) -> Result<WorkspaceDto, String> {
+    let s = service.inner().clone();
+    blocking(move || s.open_project(path.into(), generation, discard)).await
 }
 #[tauri::command]
-fn current_session(service: State<'_, AppService>) -> Result<Option<SessionDto>, String> {
-    service.current_session().map_err(error)
+async fn close_project(
+    service: State<'_, AppService>,
+    generation: u64,
+    discard: bool,
+) -> Result<WorkspaceDto, String> {
+    let s = service.inner().clone();
+    blocking(move || s.close_project(generation, discard)).await
 }
 #[tauri::command]
+async fn save_project(
+    service: State<'_, AppService>,
+    project_id: String,
+    generation: u64,
+    path: Option<String>,
+) -> Result<WorkspaceDto, String> {
+    let s = service.inner().clone();
+    blocking(move || s.save_project(&project_id, generation, path.map(Into::into))).await
+}
+#[tauri::command]
+async fn start_import(
+    service: State<'_, AppService>,
+    project_id: String,
+    generation: u64,
+    path: String,
+) -> Result<String, String> {
+    let s = service.inner().clone();
+    blocking(move || s.start_import(&project_id, generation, path.into())).await
+}
+#[tauri::command]
+async fn analyze_track(
+    service: State<'_, AppService>,
+    project_id: String,
+    generation: u64,
+    track_id: String,
+) -> Result<String, String> {
+    let s = service.inner().clone();
+    blocking(move || s.analyze_track(&project_id, generation, &track_id)).await
+}
+#[tauri::command]
+async fn relink_track(
+    service: State<'_, AppService>,
+    project_id: String,
+    generation: u64,
+    track_id: String,
+    path: String,
+) -> Result<String, String> {
+    let s = service.inner().clone();
+    blocking(move || s.relink_track(&project_id, generation, &track_id, path.into())).await
+}
+#[tauri::command]
+async fn job_status(service: State<'_, AppService>, id: String) -> Result<JobStatus, String> {
+    let s = service.inner().clone();
+    blocking(move || s.job_status(&id)).await
+}
+#[tauri::command]
+async fn cancel_job(service: State<'_, AppService>, id: String) -> Result<(), String> {
+    let s = service.inner().clone();
+    blocking(move || s.cancel_job(&id)).await
+}
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
 async fn waveform_slice(
     service: State<'_, AppService>,
-    session_id: String,
+    project_id: String,
+    generation: u64,
+    track_id: String,
     start: f64,
     end: f64,
     width: u32,
 ) -> Result<WaveformDto, String> {
-    let service = service.inner().clone();
-    tauri::async_runtime::spawn_blocking(move || {
-        service
-            .waveform_slice(&session_id, start, end, width)
-            .map_err(error)
-    })
-    .await
-    .map_err(|_| "波形查询任务失败".to_string())?
+    let s = service.inner().clone();
+    blocking(move || s.waveform_slice(&project_id, generation, &track_id, start, end, width)).await
 }
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(AppService::default())
         .invoke_handler(tauri::generate_handler![
+            current_project,
+            new_project,
+            open_project,
+            close_project,
+            save_project,
             start_import,
+            analyze_track,
+            relink_track,
             job_status,
             cancel_job,
-            current_session,
             waveform_slice
         ])
         .run(tauri::generate_context!())

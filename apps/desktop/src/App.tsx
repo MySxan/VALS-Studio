@@ -1,8 +1,15 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useStore } from "zustand";
-import type { Controller } from "./controller";
+import { terminal, type Controller } from "./controller";
 import { Waveform } from "./Waveform";
-
+const labels = {
+  unchecked: "待核验",
+  analyzing: "分析中",
+  ready: "已就绪",
+  offline: "源文件离线",
+  changed: "源文件已变化",
+  error: "分析失败",
+};
 export function App({
   controller,
   available,
@@ -12,8 +19,13 @@ export function App({
   available: boolean;
   preview: boolean;
 }) {
-  const state = useStore(controller.store);
-  const { session, viewport: view } = state;
+  const state = useStore(controller.store),
+    project = state.workspace.project,
+    track = controller.activeTrack(),
+    view = state.viewport,
+    analysis = track?.analysis;
+  const [name, setName] = useState("Untitled");
+  const disabled = !available || state.busy || preview;
   const resize = useCallback(
     (width: number) => {
       const current = controller.store.getState().viewport;
@@ -23,12 +35,9 @@ export function App({
     [controller],
   );
   function zoom(factor: number) {
-    if (!session) return;
-    const middle = (view.start + view.end) / 2;
-    const span = Math.max(
-      1 / session.sampleRate,
-      (view.end - view.start) * factor,
-    );
+    if (!track) return;
+    const middle = (view.start + view.end) / 2,
+      span = Math.max(1 / track.sampleRate, (view.end - view.start) * factor);
     controller.view(middle - span / 2, middle + span / 2);
   }
   function pan(direction: number) {
@@ -48,25 +57,75 @@ export function App({
         <span className="local">● 本地处理</span>
         <button
           className="primary"
-          disabled={!available || state.busy || preview}
+          disabled={disabled || !project}
           onClick={() => void controller.importFile()}
         >
-          ＋ 导入 WAV
+          ＋ Import WAV
         </button>
       </header>
+      <section className="project-actions" aria-label="工程操作">
+        <input
+          aria-label="新工程名称"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="工程名称"
+        />
+        <button
+          disabled={disabled}
+          onClick={() => void controller.newProject(name)}
+        >
+          New
+        </button>
+        <button
+          disabled={disabled}
+          onClick={() => void controller.openProject()}
+        >
+          Open
+        </button>
+        <button
+          disabled={disabled || !project}
+          onClick={() => void controller.saveProject()}
+        >
+          Save
+        </button>
+        <button
+          disabled={disabled || !project}
+          onClick={() => void controller.saveProject(true)}
+        >
+          Save As
+        </button>
+        <button
+          disabled={disabled || !project}
+          onClick={() => void controller.closeProject()}
+        >
+          Close
+        </button>
+      </section>
       <section className="title">
         <div>
-          <p className="eyebrow">PHASE 0 / WAVEFORM</p>
-          <h1>声音，从这里展开。</h1>
-          <p>原始声道 · min / max / RMS · 可追溯分析</p>
+          <p className="eyebrow">PROJECT WORKSPACE</p>
+          <h1>
+            {project?.name ?? "新建或打开工程"}
+            {project?.dirty ? " *" : ""}
+          </h1>
+          <p>
+            {project
+              ? project.dirty
+                ? "有未保存修改"
+                : "已保存"
+              : "WAV · Waveform · VocalProject"}
+            {project?.path ? ` · ${project.path}` : ""}
+          </p>
         </div>
         <span className="badge">
-          {preview ? "开发预览 · Rust fixture" : "单轨预览"}
+          {preview
+            ? "开发预览 · Rust fixture"
+            : `${project?.tracks.length ?? 0} tracks`}
         </span>
       </section>
       {!available && (
         <p className="banner">
-          请通过 Tauri 桌面应用打开，以选择本地 WAV 文件。
+          请通过 Tauri 桌面应用打开，以使用本地工程与音频文件。
         </p>
       )}
       {(state.error || state.queryError) && (
@@ -78,49 +137,57 @@ export function App({
         <section className="editor" aria-label="波形视口">
           <div className="toolbar">
             <strong>波形</strong>
-            <span className="secondary">
-              {session
-                ? `${session.sampleRate.toLocaleString()} Hz · ${session.channels} CH`
-                : "尚无音频"}
-            </span>
+            <select
+              aria-label="当前轨道"
+              disabled={state.busy || !project?.tracks.length}
+              value={state.activeTrackId ?? ""}
+              onChange={(e) => controller.selectTrack(e.target.value)}
+            >
+              {!project?.tracks.length && <option value="">尚无轨道</option>}
+              {project?.tracks.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} · {labels[t.status]}
+                </option>
+              ))}
+            </select>
             <div className="controls">
               <button
-                disabled={!session}
+                disabled={!analysis}
                 onClick={() => pan(-1)}
                 aria-label="向左平移"
               >
                 ←
               </button>
               <button
-                disabled={!session}
+                disabled={!analysis}
                 onClick={() => pan(1)}
                 aria-label="向右平移"
               >
                 →
               </button>
               <button
-                disabled={!session}
+                disabled={!analysis}
                 onClick={() => zoom(2)}
                 aria-label="缩小"
               >
                 −
               </button>
               <button
-                disabled={!session}
+                disabled={!analysis}
                 onClick={() => zoom(0.5)}
                 aria-label="放大"
               >
                 ＋
               </button>
               <button
-                disabled={!session}
-                onClick={() => session && controller.view(0, session.duration)}
+                disabled={!analysis}
+                onClick={() => track && controller.view(0, track.duration)}
               >
                 适合窗口
               </button>
             </div>
           </div>
-          {session ? (
+          {track && analysis ? (
             <>
               <div className="ruler">
                 {Array.from({ length: 5 }, (_, i) => (
@@ -133,7 +200,7 @@ export function App({
                 ))}
               </div>
               <Waveform
-                session={session}
+                track={track}
                 view={view}
                 data={state.waveform}
                 resize={resize}
@@ -154,66 +221,105 @@ export function App({
           ) : (
             <div className="empty">
               <div className="empty-wave">▂ ▄ ▇ ▅ ▃ ▆ █ ▄ ▂</div>
-              <h2>导入第一段人声</h2>
+              <h2>
+                {track
+                  ? labels[track.status]
+                  : project
+                    ? "导入第一段人声"
+                    : "从一个工程开始"}
+              </h2>
               <p>
-                选择单声道或立体声 PCM WAV。
-                <br />
-                分析保留原始采样率与声道，原文件不会被修改。
+                {track
+                  ? (track.error ?? "显示波形时核验音频源；工程数据仍保留。")
+                  : project
+                    ? "导入单声道或立体声 PCM WAV，然后保存 .vocalproj。"
+                    : "点击 New 创建工程，或 Open 打开已有工程。"}
               </p>
-              <small>当前解码上限：64 MiB PCM</small>
+              <small>原声道 / 原采样率 · 当前解码上限 64 MiB PCM</small>
             </div>
           )}
           <footer role="status">
-            <span className={state.busy ? "pulse" : ""}>●</span> {state.notice}
-            {state.busy && state.job && (
-              <button onClick={() => void controller.cancel()}>取消分析</button>
-            )}
+            <span className={state.busy ? "pulse" : ""}>●</span>
+            {state.notice}
+            {state.busy &&
+              state.workspace.job &&
+              !terminal(state.workspace.job) && (
+                <button onClick={() => void controller.cancel()}>
+                  取消分析
+                </button>
+              )}
           </footer>
         </section>
         <aside>
           <p className="eyebrow">INSPECTOR</p>
-          <h2>分析依据</h2>
-          {session ? (
+          <h2>轨道与分析依据</h2>
+          {track ? (
             <>
               <dl>
-                <dt>时长</dt>
-                <dd>{session.duration.toFixed(4)} s</dd>
-                <dt>置信类型</dt>
-                <dd>{session.confidence.kind}</dd>
-                <dt>概率分数</dt>
+                <dt>源状态</dt>
+                <dd>{labels[track.status]}</dd>
+                <dt>音频源</dt>
+                <dd>{track.sourcePath}</dd>
+                <dt>格式 / 时长</dt>
                 <dd>
-                  {session.confidence.score === null
-                    ? "不适用（测量值）"
-                    : session.confidence.score}
-                </dd>
-                <dt>Provider</dt>
-                <dd>{session.provenance.provider}</dd>
-                <dt>Analyzer</dt>
-                <dd>
-                  {session.provenance.analyzerId} /{" "}
-                  {session.provenance.analyzerVersion}
+                  {track.sampleRate.toLocaleString()} Hz · {track.channels} CH ·{" "}
+                  {track.duration.toFixed(4)} s
                 </dd>
               </dl>
-              <p className="explanation">{session.confidence.explanation}</p>
-              <details>
-                <summary>完整 provenance</summary>
-                <pre>{JSON.stringify(session.provenance, null, 2)}</pre>
-                <p>Artifact</p>
-                <code>{session.artifactHash}</code>
-              </details>
+              <button
+                className="retry"
+                disabled={disabled}
+                onClick={() => void controller.retryTrack()}
+              >
+                核验并重新分析
+              </button>
+              <button
+                className="retry"
+                disabled={disabled}
+                onClick={() => void controller.relinkTrack()}
+              >
+                重新关联音频
+              </button>
+              <p className="hint">
+                仅接受与原音频内容完全一致的 WAV；成功后需保存工程。
+              </p>
+              {analysis && (
+                <>
+                  <dl>
+                    <dt>置信类型</dt>
+                    <dd>{analysis.confidence.kind}</dd>
+                    <dt>概率分数</dt>
+                    <dd>
+                      {analysis.confidence.score === null
+                        ? "不适用（测量值）"
+                        : analysis.confidence.score}
+                    </dd>
+                    <dt>Provider</dt>
+                    <dd>{analysis.provenance.provider}</dd>
+                  </dl>
+                  <p className="explanation">
+                    {analysis.confidence.explanation}
+                  </p>
+                  <details>
+                    <summary>完整 provenance</summary>
+                    <pre>{JSON.stringify(analysis.provenance, null, 2)}</pre>
+                    <code>{analysis.artifactHash}</code>
+                  </details>
+                </>
+              )}
             </>
           ) : (
-            <p className="muted">导入后显示分析来源、置信语义和依赖标识。</p>
+            <p className="muted">导入音频后显示源状态与分析依据。</p>
           )}
           <div className="aside-note">
-            预览会话
+            工程保存音频关联与轨道
             <br />
-            <span>本阶段不写入或修改工程。</span>
+            <span>波形是可重算的派生结果。</span>
           </div>
         </aside>
       </div>
       <div className="bottom">
-        VALS STUDIO <span>LOCAL FIRST · PROVIDER INDEPENDENT</span>
+        VALS STUDIO<span>LOCAL FIRST · PROVIDER INDEPENDENT</span>
       </div>
     </main>
   );

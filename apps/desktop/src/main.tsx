@@ -3,6 +3,7 @@ import { App } from "./App";
 import { backend, desktopAvailable } from "./backend";
 import { createController } from "./controller";
 import "./style.css";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 async function boot() {
   const preview =
@@ -18,6 +19,13 @@ async function boot() {
     />,
   );
   if (desktopAvailable || preview) void controller.initialize();
+  if (desktopAvailable) {
+    await getCurrentWindow().onCloseRequested(async (event) => {
+      event.preventDefault();
+      // Application Close uses the same dirty/busy guard as the toolbar.
+      if (await controller.closeProject()) await getCurrentWindow().destroy();
+    });
+  }
   window.addEventListener("pagehide", () => controller.dispose(), {
     once: true,
   });

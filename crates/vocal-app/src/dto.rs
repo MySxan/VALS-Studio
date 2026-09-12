@@ -1,6 +1,7 @@
-use crate::Session;
+use crate::OpenProject;
 use serde::Serialize;
 use std::collections::BTreeMap;
+use vocal_analysis_api::AnalysisArtifact;
 use vocal_domain::analysis::ConfidenceKind;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -21,17 +22,101 @@ impl JobPhase {
 #[serde(rename_all = "camelCase")]
 pub struct JobStatus {
     pub id: String,
+    pub project_id: String,
+    pub generation: u64,
+    pub track_id: Option<String>,
     pub phase: JobPhase,
     pub error: Option<String>,
 }
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SessionDto {
+pub struct TrackDto {
     pub id: String,
+    pub name: String,
+    pub source_id: String,
+    pub source_path: String,
     pub source_hash: String,
     pub sample_rate: u32,
     pub channels: u16,
     pub duration: f64,
+    pub status: SourceStatus,
+    pub error: Option<String>,
+    pub analysis: Option<AnalysisDto>,
+}
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SourceStatus {
+    #[default]
+    Unchecked,
+    Analyzing,
+    Ready,
+    Offline,
+    Changed,
+    Error,
+}
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspaceDto {
+    pub generation: u64,
+    pub project: Option<ProjectDto>,
+    pub job: Option<JobStatus>,
+}
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectDto {
+    pub id: String,
+    pub name: String,
+    pub path: Option<String>,
+    pub dirty: bool,
+    pub tracks: Vec<TrackDto>,
+}
+impl ProjectDto {
+    pub(crate) fn from_project(p: &OpenProject) -> Self {
+        Self {
+            id: p.domain.id().to_string(),
+            name: p.domain.name().into(),
+            path: p.path.as_ref().map(|v| v.to_string_lossy().into()),
+            dirty: p.dirty,
+            tracks: p
+                .domain
+                .tracks()
+                .iter()
+                .map(|t| {
+                    let source = p
+                        .domain
+                        .sources()
+                        .iter()
+                        .find(|s| s.id() == t.source)
+                        .expect("validated domain reference");
+                    let derived = p.derived.get(&t.id);
+                    TrackDto {
+                        id: t.id.to_string(),
+                        name: t.name.clone(),
+                        source_id: t.source.to_string(),
+                        source_path: derived
+                            .and_then(|d| d.resolved_path.clone())
+                            .or_else(|| crate::paths::relative_candidate(source, p.path.as_deref()))
+                            .unwrap_or_else(|| crate::paths::fallback(source))
+                            .to_string_lossy()
+                            .into(),
+                        source_hash: source.content_hash().to_string(),
+                        sample_rate: source.metadata().sample_rate(),
+                        channels: source.metadata().channels(),
+                        duration: source.metadata().duration().get(),
+                        status: derived.map(|d| d.status).unwrap_or_default(),
+                        error: derived.and_then(|d| d.error.clone()),
+                        analysis: derived.and_then(|d| {
+                            d.artifact.as_ref().map(|a| AnalysisDto::from_artifact(a))
+                        }),
+                    }
+                })
+                .collect(),
+        }
+    }
+}
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnalysisDto {
     pub artifact_hash: String,
     pub provenance: ProvenanceDto,
     pub confidence: ConfidenceDto,
@@ -63,17 +148,12 @@ pub struct ModelDto {
     pub version: String,
     pub hash: String,
 }
-impl SessionDto {
-    pub(crate) fn from_session(s: &Session) -> Self {
-        let p = s.waveform.provenance();
-        let c = s.waveform.confidence();
+impl AnalysisDto {
+    pub(crate) fn from_artifact(artifact: &AnalysisArtifact) -> Self {
+        let p = artifact.provenance();
+        let c = artifact.confidence();
         Self {
-            id: s.id.clone(),
-            source_hash: s.source.content_hash().to_string(),
-            sample_rate: s.source.metadata().sample_rate(),
-            channels: s.source.metadata().channels(),
-            duration: s.source.metadata().duration().get(),
-            artifact_hash: s.waveform.artifact_hash().to_string(),
+            artifact_hash: artifact.artifact_hash().to_string(),
             confidence: ConfidenceDto {
                 kind: match c.kind() {
                     ConfidenceKind::Measurement => "measurement",
@@ -114,7 +194,9 @@ impl SessionDto {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WaveformDto {
-    pub session_id: String,
+    pub project_id: String,
+    pub generation: u64,
+    pub track_id: String,
     pub artifact_hash: String,
     pub frames_per_block: u64,
     pub channels: Vec<Vec<PointDto>>,

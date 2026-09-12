@@ -12,7 +12,13 @@ fn main() {
             PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/audio/stereo-48000.wav")
         });
     let service = AppService::default();
-    let job = service.start_import(path).expect("start import");
+    let workspace = service
+        .new_project("Example Project".into(), 0, false)
+        .unwrap();
+    let project_id = workspace.project.unwrap().id;
+    let job = service
+        .start_import(&project_id, workspace.generation, path)
+        .expect("start import");
     let deadline = Instant::now() + Duration::from_secs(30);
     loop {
         let status = service.job_status(&job).expect("job status");
@@ -23,14 +29,22 @@ fn main() {
         assert!(Instant::now() < deadline, "import timed out");
         std::thread::sleep(Duration::from_millis(10));
     }
-    let session = service.current_session().unwrap().unwrap();
+    let workspace = service.current_project().unwrap();
+    let track = &workspace.project.as_ref().unwrap().tracks[0];
     let waveform = service
-        .waveform_slice(&session.id, 0.0, session.duration, 2)
+        .waveform_slice(
+            &project_id,
+            workspace.generation,
+            &track.id,
+            0.0,
+            track.duration,
+            2,
+        )
         .unwrap();
     println!(
         "{}",
         serde_json::to_string_pretty(
-            &serde_json::json!({ "session": session, "waveform": waveform })
+            &serde_json::json!({ "workspace": workspace, "waveform": waveform })
         )
         .unwrap()
     );

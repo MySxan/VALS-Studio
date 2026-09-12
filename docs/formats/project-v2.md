@@ -43,3 +43,5 @@ manifest 与 v1 相同，但 `schemaVersion: 2`。`createdWith` 记录写入器�
 
 迁移 v1→v2：严格验证 v1，然后添加空 sources/tracks，保留 id/name。源工程字节不变，
 只有显式保存才写 v2。未来修改这些字段须配套 schema/migration 和兼容性测试。
+
+Application 的相对路径解析、fallback 优先级及 Save As 重基准见 [Project-relative 切片](../architecture/phase-0-relative-source-slice.md)。这些行为复用既有 uri 字段，ProjectStore 本身不解析或核验音频。

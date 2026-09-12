@@ -1,276 +1,471 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import fixture from "./test-fixtures/session.json";
 import { createController, type Controller } from "./controller";
 import {
-  sessionSchema,
+  workspaceSchema,
   validateWaveform,
   type Backend,
+  type Workspace,
+  type Job,
   type Waveform,
 } from "./model";
-
-const session = sessionSchema.parse(fixture.session);
+const sample = workspaceSchema.parse(fixture.workspace),
+  sampleProject = sample.project!,
+  sampleTrack = sampleProject.tracks[0];
 const jobId = "00000000-0000-4000-8000-000000000001";
 const controllers: Controller[] = [];
-function setup(overrides: Partial<Backend> = {}) {
-  const api: Backend = {
-    currentSession: vi.fn(async () => session),
-    chooseFile: vi.fn(async () => "test.wav"),
-    startImport: vi.fn(async () => jobId),
-    jobStatus: vi.fn(async () => ({
-      id: jobId,
-      phase: "running" as const,
-      error: null,
-    })),
-    cancelJob: vi.fn(async () => {}),
-    waveform: vi.fn(async () => fixture.waveform),
-    ...overrides,
-  };
-  const controller = createController(api);
-  controllers.push(controller);
-  return { api, controller };
-}
+it("reanalysis shows analyzing instead of stale ready evidence", async () => {
+  vi.useFakeTimers();
+  const { c, api } = setup(sample);
+  await c.initialize();
+  await settle();
+  vi.mocked(api.jobStatus).mockResolvedValue({
+    id: jobId,
+    projectId: sampleProject.id,
+    generation: sample.generation,
+    trackId: sampleTrack.id,
+    phase: "running",
+    error: null,
+  });
+  await c.retryTrack();
+  await settle();
+  expect(c.store.getState().workspace.project?.tracks[0].status).toBe(
+    "analyzing",
+  );
+  expect(c.store.getState().workspace.project?.tracks[0].analysis).toBeNull();
+  expect(c.store.getState().waveform).toBeNull();
+});
+const copy = <T>(x: T): T => structuredClone(x);
 async function settle() {
-  for (let i = 0; i < 8; i++) await Promise.resolve();
+  for (let i = 0; i < 20; i++) await Promise.resolve();
 }
 function deferred<T>() {
-  let resolve!: (value: T) => void;
-  let reject!: (reason: unknown) => void;
+  let resolve!: (x: T) => void, reject!: (e: unknown) => void;
   const promise = new Promise<T>((yes, no) => {
     resolve = yes;
     reject = no;
   });
   return { promise, resolve, reject };
 }
+function setup(
+  initial: Workspace = { generation: 0, project: null, job: null },
+) {
+  let state = copy(initial),
+    disk: Workspace | null = null,
+    pending: "import" | "analyze" | "relink" = "import";
+  let outcome: "succeeded" | "failed" | "cancelled" = "succeeded";
+  let failureState: "offline" | "changed" | "error" = "offline";
+  const api: Backend = {
+    currentProject: vi.fn(async () => copy(state)),
+    newProject: vi.fn(async (name, generation) => {
+      state = {
+        generation: generation + 1,
+        project: {
+          ...copy(sampleProject),
+          name,
+          path: null,
+          dirty: true,
+          tracks: [],
+        },
+        job: null,
+      };
+      return copy(state);
+    }),
+    closeProject: vi.fn(async (generation) => {
+      state = { generation: generation + 1, project: null, job: null };
+      return copy(state);
+    }),
+    openProject: vi.fn(async (_, generation) => {
+      state = copy(disk!);
+      state.generation = generation + 1;
+      state.job = null;
+      state.project!.tracks.forEach((t) => {
+        t.status = "unchecked";
+        t.analysis = null;
+      });
+      return copy(state);
+    }),
+    saveProject: vi.fn(async (_, path) => {
+      state.project!.path = path ?? state.project!.path;
+      state.project!.dirty = false;
+      disk = copy(state);
+      return copy(state);
+    }),
+    chooseFile: vi.fn(async (kind) =>
+      kind === "audio" ? "audio.wav" : "saved.vocalproj",
+    ),
+    chooseSavePath: vi.fn(async () => "saved.vocalproj"),
+    confirmDiscard: vi.fn(async () => false),
+    startImport: vi.fn(async () => {
+      pending = "import";
+      return jobId;
+    }),
+    analyzeTrack: vi.fn(async () => {
+      pending = "analyze";
+      return jobId;
+    }),
+    relinkTrack: vi.fn(async () => {
+      pending = "relink";
+      return jobId;
+    }),
+    jobStatus: vi.fn(async () => {
+      if (outcome === "succeeded") {
+        if (pending === "import") {
+          state.project!.tracks.push(copy(sampleTrack));
+          state.project!.dirty = true;
+        } else if (pending === "relink") {
+          state.project!.tracks[0] = {
+            ...copy(sampleTrack),
+            sourcePath: "audio.wav",
+          };
+          state.project!.dirty = true;
+        } else {
+          state.project!.tracks[0].status = "ready";
+          state.project!.tracks[0].analysis = copy(sampleTrack.analysis);
+          state.project!.tracks[0].error = null;
+        }
+      } else if (pending === "analyze") {
+        state.project!.tracks[0].status =
+          outcome === "cancelled" ? "unchecked" : failureState;
+        state.project!.tracks[0].analysis = null;
+        state.project!.tracks[0].error = "source unavailable";
+      }
+      state.job = {
+        id: jobId,
+        projectId: state.project!.id,
+        generation: state.generation,
+        trackId:
+          pending !== "import" || outcome === "succeeded"
+            ? sampleTrack.id
+            : null,
+        phase: outcome,
+        error: outcome === "failed" ? "source unavailable" : null,
+      };
+      return copy(state.job);
+    }),
+    cancelJob: vi.fn(async () => {
+      outcome = "cancelled";
+    }),
+    waveform: vi.fn(async (ref) => ({ ...fixture.waveform, ...ref })),
+  };
+  const c = createController(api);
+  controllers.push(c);
+  return {
+    c,
+    api,
+    setOutcome: (
+      next: typeof outcome,
+      status: typeof failureState = "offline",
+    ) => {
+      outcome = next;
+      failureState = status;
+    },
+    state: () => state,
+  };
+}
 afterEach(() => {
   controllers.splice(0).forEach((c) => c.dispose());
   vi.useRealTimers();
 });
-
-describe("Rust DTO contract", () => {
-  it("accepts real Rust output and preserves measurement semantics", () => {
-    expect(session.confidence.score).toBeNull();
-    expect(session.provenance.dependencyHashes).toHaveLength(1);
-    expect(
-      validateWaveform(fixture.waveform, session, {
-        start: 0,
-        end: session.duration,
-        width: 2,
-      }),
-    ).toEqual(fixture.waveform);
-  });
-  it("rejects mismatched identity, oversized payloads and malformed measurements", () => {
-    const view = { start: 0, end: 1, width: 2 };
+it("New → Import → Save → Close/Open → verify/analyze uses project/track identity", async () => {
+  const { c, api } = setup();
+  await c.initialize();
+  await c.newProject("Song");
+  await c.importFile();
+  await settle();
+  expect(c.store.getState().workspace.project?.dirty).toBe(true);
+  expect(c.store.getState().waveform?.trackId).toBe(sampleTrack.id);
+  await c.saveProject();
+  expect(c.store.getState().workspace.project?.dirty).toBe(false);
+  await c.closeProject();
+  expect(c.store.getState().workspace.project).toBeNull();
+  await c.openProject();
+  await settle();
+  expect(api.analyzeTrack).toHaveBeenCalledWith(
+    { projectId: sampleProject.id, generation: 3 },
+    sampleTrack.id,
+  );
+  expect(c.store.getState().workspace.project?.dirty).toBe(false);
+  expect(c.store.getState().waveform?.generation).toBe(3);
+  await c.saveProject(true);
+  expect(api.chooseSavePath).toHaveBeenCalledTimes(2);
+});
+it("dirty close requires explicit discard; cancelled dialog preserves project", async () => {
+  const { c, api } = setup(sample);
+  await c.initialize();
+  await settle();
+  expect(await c.closeProject()).toBe(false);
+  expect(api.closeProject).not.toHaveBeenCalled();
+  vi.mocked(api.confirmDiscard).mockResolvedValue(true);
+  expect(await c.closeProject()).toBe(true);
+  expect(c.store.getState().workspace.project).toBeNull();
+});
+it("cancelled Open or Save As does not mutate project or dirty state", async () => {
+  const { c, api } = setup(sample);
+  await c.initialize();
+  await settle();
+  vi.mocked(api.chooseFile).mockResolvedValue(null);
+  vi.mocked(api.chooseSavePath).mockResolvedValue(null);
+  await c.openProject();
+  await c.saveProject(true);
+  expect(api.openProject).not.toHaveBeenCalled();
+  expect(api.saveProject).not.toHaveBeenCalled();
+  expect(c.store.getState().workspace.project?.dirty).toBe(true);
+});
+it("failed import preserves existing tracks and waveform", async () => {
+  const { c, setOutcome } = setup(sample);
+  await c.initialize();
+  await settle();
+  setOutcome("failed");
+  await c.importFile();
+  await settle();
+  expect(c.store.getState().workspace.project?.tracks).toHaveLength(1);
+  expect(c.store.getState().waveform).not.toBeNull();
+  expect(c.store.getState().error).toBe("source unavailable");
+});
+it.each(["offline", "changed"] as const)(
+  "opened project remains clean when source is %s",
+  async (status) => {
+    const data = copy(sample);
+    data.project!.dirty = false;
+    data.project!.tracks[0].status = "unchecked";
+    data.project!.tracks[0].analysis = null;
+    data.job = null;
+    const { c, setOutcome } = setup(data);
+    setOutcome("failed", status);
+    await c.initialize();
+    await settle();
+    expect(c.store.getState().workspace.project?.tracks[0].status).toBe(status);
+    expect(c.store.getState().workspace.project?.dirty).toBe(false);
+    expect(c.store.getState().waveform).toBeNull();
+  },
+);
+it("old viewport response cannot populate a newly opened generation of the same project", async () => {
+  const old = deferred<Waveform>();
+  const { c, api } = setup(sample);
+  vi.mocked(api.waveform).mockReturnValueOnce(old.promise);
+  await c.initialize();
+  vi.mocked(api.confirmDiscard).mockResolvedValue(true);
+  await c.newProject("Next");
+  old.resolve(fixture.waveform);
+  await settle();
+  expect(c.store.getState().workspace.generation).toBe(sample.generation + 1);
+  expect(c.store.getState().waveform).toBeNull();
+});
+it("latest viewport wins, bounds are clamped and analysis is not restarted", async () => {
+  const old = deferred<Waveform>();
+  const { c, api } = setup(sample);
+  vi.mocked(api.waveform).mockReturnValueOnce(old.promise);
+  await c.initialize();
+  c.view(-1, -0.99, 9999);
+  await settle();
+  old.reject(new Error("stale"));
+  await settle();
+  expect(c.store.getState().viewport.width).toBe(4096);
+  expect(c.store.getState().viewport.start).toBe(0);
+  expect(c.store.getState().queryError).toBeNull();
+  expect(api.analyzeTrack).not.toHaveBeenCalled();
+});
+it("cancel remains busy until terminal status; duplicate imports are blocked", async () => {
+  vi.useFakeTimers();
+  const { c, api } = setup(sample);
+  await c.initialize();
+  await settle();
+  const running: Job = {
+    id: jobId,
+    projectId: sampleProject.id,
+    generation: sample.generation,
+    trackId: null,
+    phase: "running",
+    error: null,
+  };
+  vi.mocked(api.jobStatus).mockResolvedValueOnce(running);
+  await c.importFile();
+  await settle();
+  await c.importFile();
+  expect(api.startImport).toHaveBeenCalledTimes(1);
+  await c.cancel();
+  expect(c.store.getState().busy).toBe(true);
+  await vi.advanceTimersByTimeAsync(200);
+  expect(c.store.getState().busy).toBe(false);
+  expect(c.store.getState().workspace.project?.tracks).toHaveLength(1);
+});
+it("reload resumes polling an existing job instead of enabling a second import", async () => {
+  vi.useFakeTimers();
+  const data = copy(sample);
+  data.job = {
+    id: jobId,
+    projectId: sampleProject.id,
+    generation: sample.generation,
+    trackId: null,
+    phase: "running",
+    error: null,
+  };
+  const { c, api } = setup(data);
+  vi.mocked(api.jobStatus).mockResolvedValue(data.job);
+  await c.initialize();
+  await settle();
+  expect(c.store.getState().busy).toBe(true);
+  expect(api.jobStatus).toHaveBeenCalledWith(jobId);
+  c.dispose();
+  await vi.advanceTimersByTimeAsync(2000);
+  expect(api.jobStatus).toHaveBeenCalledTimes(1);
+});
+it("transport errors retry without enabling conflicting operations", async () => {
+  vi.useFakeTimers();
+  const { c, api } = setup(sample);
+  await c.initialize();
+  await settle();
+  vi.mocked(api.jobStatus).mockRejectedValueOnce(new Error("transport"));
+  await c.importFile();
+  await settle();
+  expect(c.store.getState().busy).toBe(true);
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(c.store.getState().busy).toBe(false);
+});
+it("save error preserves dirty/path and current waveform", async () => {
+  const { c, api } = setup(sample);
+  await c.initialize();
+  await settle();
+  vi.mocked(api.saveProject).mockRejectedValue(new Error("disk"));
+  await c.saveProject();
+  expect(c.store.getState().workspace.project?.dirty).toBe(true);
+  expect(c.store.getState().workspace.project?.path).toBeNull();
+  expect(c.store.getState().waveform).not.toBeNull();
+});
+it("DTO checks real Rust evidence and rejects wrong project/generation/track or bounds", () => {
+  const ref = { projectId: sampleProject.id, generation: sample.generation },
+    view = { start: 0, end: 0.02, width: 2 };
+  expect(
+    validateWaveform(fixture.waveform, ref, sampleTrack, view).trackId,
+  ).toBe(sampleTrack.id);
+  for (const change of [
+    { projectId: jobId },
+    { generation: 999 },
+    { trackId: jobId },
+    { channels: [Array(4).fill(fixture.waveform.channels[0][0]), []] },
+  ])
     expect(() =>
       validateWaveform(
-        { ...fixture.waveform, sessionId: jobId },
-        session,
+        { ...fixture.waveform, ...change },
+        ref,
+        sampleTrack,
         view,
       ),
     ).toThrow();
-    expect(() =>
-      validateWaveform(
-        { ...fixture.waveform, artifactHash: "0".repeat(64) },
-        session,
-        view,
-      ),
-    ).toThrow();
-    expect(() =>
-      validateWaveform(
-        {
-          ...fixture.waveform,
-          channels: [Array(4).fill(fixture.waveform.channels[0][0]), []],
-        },
-        session,
-        view,
-      ),
-    ).toThrow();
-    expect(() =>
-      sessionSchema.parse({
-        ...session,
-        confidence: { ...session.confidence, score: 1 },
-      }),
-    ).toThrow();
-    expect(() =>
-      sessionSchema.parse({ ...session, duration: Infinity }),
-    ).toThrow();
-  });
+  const invalid = copy(sample);
+  invalid.project!.tracks[0].analysis!.confidence.score = 1;
+  expect(() => workspaceSchema.parse(invalid)).toThrow();
 });
 
-describe("session and viewport lifecycle", () => {
-  it("ignores stale waveform responses and errors after a newer viewport", async () => {
-    const old = deferred<Waveform>();
-    const latest = deferred<Waveform>();
-    const waveform = vi
-      .fn()
-      .mockReturnValueOnce(old.promise)
-      .mockReturnValueOnce(latest.promise);
-    const { controller } = setup({ waveform });
-    await controller.initialize();
-    controller.view(0, session.duration / 2);
-    latest.resolve(fixture.waveform);
-    await settle();
-    old.reject(new Error("outdated error"));
-    await settle();
-    expect(controller.store.getState().waveform).toEqual(fixture.waveform);
-    expect(controller.store.getState().error).toBeNull();
-    expect(controller.store.getState().viewport.end).toBe(session.duration / 2);
+it("relink restores an offline track and saves its new location", async () => {
+  const offline = copy(sample);
+  offline.project!.dirty = false;
+  offline.project!.tracks[0].status = "offline";
+  offline.project!.tracks[0].analysis = null;
+  const { c, api } = setup(offline);
+  await c.initialize();
+  await c.relinkTrack();
+  await settle();
+  expect(api.relinkTrack).toHaveBeenCalledWith(
+    { projectId: sampleProject.id, generation: sample.generation },
+    sampleTrack.id,
+    "audio.wav",
+  );
+  const project = c.store.getState().workspace.project!;
+  expect(project.id).toBe(sampleProject.id);
+  expect(project.dirty).toBe(true);
+  expect(project.tracks[0]).toMatchObject({
+    id: sampleTrack.id,
+    sourceId: sampleTrack.sourceId,
+    sourcePath: "audio.wav",
+    status: "ready",
+    analysis: sampleTrack.analysis,
   });
-  it("clamps pan and width, rejects invalid viewports, never restarts analysis", async () => {
-    const { controller, api } = setup();
-    await controller.initialize();
-    await settle();
-    controller.view(-10, -10 + session.duration / 2, 9000);
-    expect(controller.store.getState().viewport).toEqual({
-      start: 0,
-      end: expect.closeTo(session.duration / 2),
-      width: 4096,
-    });
-    const before = controller.store.getState().viewport;
-    controller.view(NaN, 10);
-    expect(controller.store.getState().viewport).toEqual(before);
-    expect(api.startImport).not.toHaveBeenCalled();
-  });
-  it("disposal prevents late responses and stops polling", async () => {
+  expect(c.store.getState().waveform).not.toBeNull();
+  await c.saveProject();
+  expect(c.store.getState().workspace.project!.dirty).toBe(false);
+});
+it.each(["failed", "cancelled"] as const)(
+  "%s relink preserves the original track and evidence",
+  async (outcome) => {
     vi.useFakeTimers();
-    const result = deferred<Waveform>();
-    const { controller, api } = setup({ waveform: () => result.promise });
-    await controller.initialize();
-    await controller.importFile();
+    const { c, api, setOutcome } = setup(sample);
+    await c.initialize();
     await settle();
-    controller.dispose();
-    result.resolve(fixture.waveform);
+    const before = copy(c.store.getState().workspace.project);
+    const pending = deferred<Job>();
+    vi.mocked(api.jobStatus).mockReturnValueOnce(pending.promise);
+    setOutcome(outcome);
+    await c.relinkTrack();
+    expect(c.store.getState().workspace.project).toEqual(before);
+    expect(c.store.getState().waveform).not.toBeNull();
+    await c.importFile();
+    expect(api.startImport).not.toHaveBeenCalled();
+    if (outcome === "cancelled") await c.cancel();
+    pending.resolve({
+      id: jobId,
+      projectId: sampleProject.id,
+      generation: sample.generation,
+      trackId: sampleTrack.id,
+      phase: "running",
+      error: null,
+    });
     await settle();
-    const count = vi.mocked(api.jobStatus).mock.calls.length;
-    await vi.advanceTimersByTimeAsync(2000);
-    expect(api.jobStatus).toHaveBeenCalledTimes(count);
-    expect(controller.store.getState().waveform).toBeNull();
-  });
+    await vi.advanceTimersByTimeAsync(200);
+    await settle();
+    expect(c.store.getState().workspace.project).toEqual(before);
+    expect(c.store.getState().busy).toBe(false);
+    expect(c.store.getState().waveform).not.toBeNull();
+  },
+);
+it("cancelled relink picker and transport failure retain the current projection", async () => {
+  const { c, api } = setup(sample);
+  await c.initialize();
+  await settle();
+  const before = copy(c.store.getState().workspace.project);
+  vi.mocked(api.chooseFile).mockResolvedValueOnce(null);
+  await c.relinkTrack();
+  expect(api.relinkTrack).not.toHaveBeenCalled();
+  vi.mocked(api.relinkTrack).mockRejectedValueOnce(new Error("unavailable"));
+  await c.relinkTrack();
+  expect(c.store.getState().workspace.project).toEqual(before);
+  expect(c.store.getState().waveform).not.toBeNull();
+  expect(c.store.getState().busy).toBe(false);
+});
+it("disposed relink request cancels its eventual backend job", async () => {
+  const { c, api } = setup(sample);
+  await c.initialize();
+  await settle();
+  const pending = deferred<string>();
+  vi.mocked(api.relinkTrack).mockReturnValueOnce(pending.promise);
+  const work = c.relinkTrack();
+  await settle();
+  c.dispose();
+  pending.resolve(jobId);
+  await work;
+  expect(api.cancelJob).toHaveBeenCalledWith(jobId);
+  expect(api.jobStatus).not.toHaveBeenCalled();
 });
 
-describe("background import", () => {
-  it("late initialization cannot overwrite a successfully imported session", async () => {
-    const initial = deferred<typeof session | null>();
-    const next = { ...session, id: jobId };
-    const { controller } = setup({
-      currentSession: vi
-        .fn()
-        .mockReturnValueOnce(initial.promise)
-        .mockResolvedValue(next),
-      jobStatus: async () => ({ id: jobId, phase: "succeeded", error: null }),
-      waveform: async () => ({ ...fixture.waveform, sessionId: jobId }),
-    });
-    const initialize = controller.initialize();
-    await controller.importFile();
-    await settle();
-    initial.resolve(session);
-    await initialize;
-    await settle();
-    expect(controller.store.getState().session?.id).toBe(jobId);
-  });
-  it("a late successful viewport does not erase an import error", async () => {
-    const wave = deferred<Waveform>();
-    const { controller } = setup({
-      waveform: () => wave.promise,
-      jobStatus: async () => ({
-        id: jobId,
-        phase: "failed",
-        error: "bad source",
-      }),
-    });
-    await controller.initialize();
-    await controller.importFile();
-    await settle();
-    wave.resolve(fixture.waveform);
-    await settle();
-    expect(controller.store.getState().error).toBe("bad source");
-    expect(controller.store.getState().waveform).not.toBeNull();
-  });
-  it("preserves the old session on failure and prevents duplicate imports", async () => {
-    vi.useFakeTimers();
-    const { controller, api } = setup();
-    await controller.initialize();
-    await settle();
-    await controller.importFile();
-    await controller.importFile();
-    await settle();
-    expect(api.startImport).toHaveBeenCalledTimes(1);
-    vi.mocked(api.jobStatus).mockResolvedValue({
-      id: jobId,
-      phase: "failed",
-      error: "invalid WAV",
-    });
-    await vi.advanceTimersByTimeAsync(200);
-    expect(controller.store.getState().session).toEqual(session);
-    expect(controller.store.getState().waveform).not.toBeNull();
-    expect(controller.store.getState().error).toBe("invalid WAV");
-    expect(controller.store.getState().busy).toBe(false);
-  });
-  it("retains busy until cancellation reaches a terminal status", async () => {
-    vi.useFakeTimers();
-    const { controller, api } = setup();
-    await controller.initialize();
-    await settle();
-    await controller.importFile();
-    await settle();
-    await controller.cancel();
-    expect(api.cancelJob).toHaveBeenCalledWith(jobId);
-    expect(controller.store.getState().busy).toBe(true);
-    vi.mocked(api.jobStatus).mockResolvedValue({
-      id: jobId,
-      phase: "cancelled",
-      error: null,
-    });
-    await vi.advanceTimersByTimeAsync(200);
-    expect(controller.store.getState().busy).toBe(false);
-    expect(controller.store.getState().session).toEqual(session);
-  });
-  it("publishes a successful replacement and resets the viewport", async () => {
-    vi.useFakeTimers();
-    const { controller, api } = setup();
-    await controller.initialize();
-    await settle();
-    controller.view(0, session.duration / 2);
-    await settle();
-    const next = { ...session, id: jobId };
-    vi.mocked(api.currentSession).mockResolvedValue(next);
-    vi.mocked(api.waveform).mockResolvedValue({
-      ...fixture.waveform,
-      sessionId: jobId,
-    });
-    vi.mocked(api.jobStatus).mockResolvedValue({
-      id: jobId,
-      phase: "succeeded",
-      error: null,
-    });
-    await controller.importFile();
-    await settle();
-    expect(controller.store.getState().session?.id).toBe(jobId);
-    expect(controller.store.getState().viewport.end).toBe(session.duration);
-    expect(controller.store.getState().waveform?.sessionId).toBe(jobId);
-    expect(controller.store.getState().busy).toBe(false);
-  });
-  it("recovers status polling failures without allowing another import", async () => {
-    vi.useFakeTimers();
-    const { controller, api } = setup();
-    vi.mocked(api.jobStatus).mockRejectedValueOnce(
-      new Error("transport unavailable"),
-    );
-    await controller.importFile();
-    await settle();
-    expect(controller.store.getState().busy).toBe(true);
-    vi.mocked(api.jobStatus).mockResolvedValue({
-      id: jobId,
-      phase: "cancelled",
-      error: null,
-    });
-    await vi.advanceTimersByTimeAsync(1000);
-    expect(controller.store.getState().busy).toBe(false);
-    expect(controller.store.getState().error).toBeNull();
-  });
-  it("file dialog cancellation does not start a job", async () => {
-    const { controller, api } = setup({ chooseFile: async () => null });
-    await controller.importFile();
-    expect(api.startImport).not.toHaveBeenCalled();
-    expect(controller.store.getState().busy).toBe(false);
-  });
+it("opened moved project keeps the backend resolved source path without semantic edits", async () => {
+  const moved = copy(sample);
+  moved.project!.dirty = false;
+  moved.project!.path = "D:/moved/song.vocalproj";
+  moved.project!.tracks[0].sourcePath = "D:/moved/audio/voice.wav";
+  moved.project!.tracks[0].status = "unchecked";
+  moved.project!.tracks[0].analysis = null;
+  const { c, api } = setup(moved);
+  await c.initialize();
+  await settle();
+  expect(api.analyzeTrack).toHaveBeenCalledWith(
+    { projectId: sampleProject.id, generation: sample.generation },
+    sampleTrack.id,
+  );
+  expect(c.store.getState().workspace.project!.dirty).toBe(false);
+  expect(c.activeTrack()!.sourcePath).toBe("D:/moved/audio/voice.wav");
+  expect(c.store.getState().waveform).not.toBeNull();
+  await c.saveProject(true);
+  expect(c.activeTrack()!.sourcePath).toBe("D:/moved/audio/voice.wav");
+  expect(c.store.getState().waveform).not.toBeNull();
 });

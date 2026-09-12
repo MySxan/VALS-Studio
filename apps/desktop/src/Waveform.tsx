@@ -1,13 +1,13 @@
 import { useEffect, useRef } from "react";
-import type { Session, Viewport, Waveform as WaveformData } from "./model";
+import type { Track, Viewport, Waveform as WaveformData } from "./model";
 
 export function Waveform({
-  session,
+  track: session,
   view,
   data,
   resize,
 }: {
-  session: Session;
+  track: Track;
   view: Viewport;
   data: WaveformData | null;
   resize: (width: number) => void;

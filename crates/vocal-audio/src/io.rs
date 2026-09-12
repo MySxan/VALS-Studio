@@ -79,7 +79,8 @@ pub(crate) fn hash_copy(
     Ok((ContentHash(hasher.finalize().into()), total))
 }
 
-/// Verifies the absolute fallback at call time. Relative relocation is not yet implemented.
+/// Verifies the supplied absolute location at call time. Project-relative resolution
+/// belongs to the application; pass its resolved source to this adapter.
 /// A caller must still guard against changes between this check and subsequent use.
 pub fn verify_source(source: &AudioSource, cancel: &CancellationToken) -> Result<(), AudioError> {
     cancel.check()?;

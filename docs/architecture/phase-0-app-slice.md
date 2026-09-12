@@ -1,5 +1,7 @@
 # Phase 0：后台导入与预览会话
 
+> 历史阶段记录。session-based 接口已由 [Project-backed 工作流](phase-0-project-backed-desktop.md) 替代；当前状态见 [CURRENT](../CURRENT.md)。
+
 本切片遵守 SDD，未引入 ADR 或修改 Canonical Domain Model。
 阶段初始规划包含桌面 UI；实施拆分后，本次交付可测试的应用服务和 JSON 示例，
 Tauri commands、文件选择器、React/Zustand 和 Canvas 留给后续独立切片。

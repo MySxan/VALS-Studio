@@ -18,6 +18,7 @@ vocal-app = { path = "../../../crates/vocal-app" }
 [dev-dependencies]
 tauri = { version = "2", features = ["test"] }
 serde_json = "1"
+tempfile = "3"
 
 [lints.rust]
 unsafe_code = "forbid"

@@ -539,11 +539,14 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
+ "tempfile",
  "vocal-analysis-api",
  "vocal-analysis-runtime",
  "vocal-audio",
  "vocal-domain",
  "vocal-dsp",
+ "vocal-project",
+ "zip",
 ]
 
 [[package]]

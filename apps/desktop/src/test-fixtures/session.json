@@ -1,33 +1,4 @@
 {
-  "session": {
-    "artifactHash": "009d025f855dfa672cbf65789a2855091fe8c58bdc42fbc7b8792c1b525531fa",
-    "channels": 2,
-    "confidence": {
-      "explanation": "Per-channel extrema and frame-weighted RMS; probability score not applicable.",
-      "kind": "measurement",
-      "score": null
-    },
-    "duration": 0.02,
-    "id": "f49a8455-557e-4d2e-9376-a13057902108",
-    "provenance": {
-      "analyzerId": "dsp.waveform-peaks",
-      "analyzerVersion": "1",
-      "createdAtUnixMs": 1789154648586,
-      "dependencyHashes": [
-        "d063d6c4fc1a0149b9e8585f31e08e26092eb4fda256ced2eb18600a5c0ec2a8"
-      ],
-      "model": null,
-      "provider": "rust-min-max-rms",
-      "runtime": "windows/x86_64",
-      "settings": {
-        "base_frames": "256"
-      },
-      "settingsHash": "c035b7a4944b56ca755361d215a19a77c8154080d8b7dfa9f62a31915b1cc351",
-      "sourceHash": "3bf26cbf3c9f632a2935804ac55f9fd3484ae3e5fc10fadb503ec86d8a0a41b5"
-    },
-    "sampleRate": 48000,
-    "sourceHash": "3bf26cbf3c9f632a2935804ac55f9fd3484ae3e5fc10fadb503ec86d8a0a41b5"
-  },
   "waveform": {
     "artifactHash": "009d025f855dfa672cbf65789a2855091fe8c58bdc42fbc7b8792c1b525531fa",
     "channels": [
@@ -65,6 +36,63 @@
       ]
     ],
     "framesPerBlock": 512,
-    "sessionId": "f49a8455-557e-4d2e-9376-a13057902108"
+    "generation": 1,
+    "projectId": "13f5a2d0-e1d5-49d1-9695-632e0cef89b5",
+    "trackId": "af18a5f1-5502-46c8-b0b5-5b37d8979176"
+  },
+  "workspace": {
+    "generation": 1,
+    "job": {
+      "error": null,
+      "generation": 1,
+      "id": "1f38b868-5c42-4c05-8e46-f850dd43b0a6",
+      "phase": "succeeded",
+      "projectId": "13f5a2d0-e1d5-49d1-9695-632e0cef89b5",
+      "trackId": "af18a5f1-5502-46c8-b0b5-5b37d8979176"
+    },
+    "project": {
+      "dirty": true,
+      "id": "13f5a2d0-e1d5-49d1-9695-632e0cef89b5",
+      "name": "Example Project",
+      "path": null,
+      "tracks": [
+        {
+          "analysis": {
+            "artifactHash": "009d025f855dfa672cbf65789a2855091fe8c58bdc42fbc7b8792c1b525531fa",
+            "confidence": {
+              "explanation": "Per-channel extrema and frame-weighted RMS; probability score not applicable.",
+              "kind": "measurement",
+              "score": null
+            },
+            "provenance": {
+              "analyzerId": "dsp.waveform-peaks",
+              "analyzerVersion": "1",
+              "createdAtUnixMs": 1789175287676,
+              "dependencyHashes": [
+                "d063d6c4fc1a0149b9e8585f31e08e26092eb4fda256ced2eb18600a5c0ec2a8"
+              ],
+              "model": null,
+              "provider": "rust-min-max-rms",
+              "runtime": "windows/x86_64",
+              "settings": {
+                "base_frames": "256"
+              },
+              "settingsHash": "c035b7a4944b56ca755361d215a19a77c8154080d8b7dfa9f62a31915b1cc351",
+              "sourceHash": "3bf26cbf3c9f632a2935804ac55f9fd3484ae3e5fc10fadb503ec86d8a0a41b5"
+            }
+          },
+          "channels": 2,
+          "duration": 0.02,
+          "error": null,
+          "id": "af18a5f1-5502-46c8-b0b5-5b37d8979176",
+          "name": "stereo-48000",
+          "sampleRate": 48000,
+          "sourceHash": "3bf26cbf3c9f632a2935804ac55f9fd3484ae3e5fc10fadb503ec86d8a0a41b5",
+          "sourceId": "d87f9898-318d-401a-885a-b51a081ac432",
+          "sourcePath": "\\\\?\\D:\\Desktop\\proj\\VALS Studio\\fixtures\\audio\\stereo-48000.wav",
+          "status": "ready"
+        }
+      ]
+    }
   }
 }

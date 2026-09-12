@@ -82,3 +82,49 @@ fn invalid_metadata_hash_and_relative_paths_are_rejected() {
         .is_err());
     }
 }
+
+#[test]
+fn source_location_update_is_atomic_and_cannot_change_content_facts() {
+    let mut project = VocalProject::new("Location");
+    let audio = source();
+    project
+        .attach_audio(
+            audio.clone(),
+            VocalTrack {
+                id: EntityId::new(),
+                name: "Vocal".into(),
+                source: audio.id(),
+                channel_mode: ChannelMode::Left,
+            },
+        )
+        .unwrap();
+    let before = project.clone();
+    let invalid = AudioUri::Linked {
+        absolute_fallback: "".into(),
+        relative_path: None,
+    };
+    assert!(project.set_source_uri(audio.id(), invalid).is_err());
+    assert!(project
+        .set_source_uri(EntityId::new(), audio.uri().clone())
+        .is_err());
+    assert_eq!(project, before);
+    let uri = AudioUri::Linked {
+        absolute_fallback: "/moved/vocal.wav".into(),
+        relative_path: None,
+    };
+    project.set_source_uri(audio.id(), uri.clone()).unwrap();
+    assert_eq!(project.id(), before.id());
+    assert_eq!(project.name(), before.name());
+    assert_eq!(project.tracks(), before.tracks());
+    assert_eq!(
+        project.sources(),
+        &[AudioSource::new(
+            audio.id(),
+            uri,
+            audio.content_hash(),
+            audio.size_bytes(),
+            audio.metadata()
+        )
+        .unwrap()]
+    );
+}
